@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "OneLeadQ",
+    "slug": "oneleadq-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "oneleadq",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.oneleadq.app"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
