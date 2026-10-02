@@ -1,0 +1,2 @@
+import {StyleSheet,Text,View} from 'react-native'; import {colors} from '../../src/theme';
+export default function More(){return <View style={s.p}><Text style={s.t}>More</Text><Text style={s.x}>SEO · Ads · Reports · Leads · Projects · Settings</Text></View>} const s=StyleSheet.create({p:{flex:1,backgroundColor:colors.cream,padding:24,paddingTop:60},t:{fontSize:30,fontWeight:'900',color:colors.green},x:{marginTop:12,color:colors.muted}});
