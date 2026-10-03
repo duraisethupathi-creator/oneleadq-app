@@ -1,14 +1,22 @@
-import { ScrollView,StyleSheet,Text,View,Pressable } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { loadTasks } from '../../src/storage/taskStorage';
 import { colors } from '../../src/theme';
 
-const metrics=[['Today Tasks','6'],['Approvals','3'],['Scheduled','4'],['SEO Issues','8']];
 export default function Dashboard(){
+ const router=useRouter();
+ const [todayTasks,setTodayTasks]=useState(0);
+ const [approvals,setApprovals]=useState(0);
+ useFocusEffect(useCallback(()=>{let active=true;loadTasks().then(tasks=>{if(!active)return;const today=new Date().toISOString().slice(0,10);setTodayTasks(tasks.filter(t=>t.dueDate===today&&t.status!=='completed').length);setApprovals(tasks.filter(t=>t.approval==='waiting').length);}).catch(()=>{});return()=>{active=false};},[]));
+ const metrics=[['Today Tasks',String(todayTasks)],['Approvals',String(approvals)],['Scheduled','4'],['SEO Issues','8']];
+ const actions=[{label:'+ Client',go:()=>router.push('/(tabs)/clients')},{label:'Create Content',go:()=>{}},{label:'SEO Check',go:()=>{}},{label:'Report',go:()=>{}}];
  return <ScrollView style={s.page} contentContainerStyle={s.content}>
    <View style={s.hero}><Text style={s.brand}>ONELEADQ</Text><Text style={s.tag}>ONE STRATEGY. INFINITE GROWTH.</Text><Text style={s.hi}>Agency Command Center</Text><Text style={s.sub}>Current client · Catchy Decors</Text></View>
    <Text style={s.title}>Overview</Text>
-   <View style={s.grid}>{metrics.map(([k,v])=><View style={s.card} key={k}><Text style={s.num}>{v}</Text><Text style={s.label}>{k}</Text></View>)}</View>
+   <View style={s.grid}>{metrics.map(([k,v])=><Pressable style={s.card} key={k} onPress={()=>{if(k==='Today Tasks'||k==='Approvals')router.push('/(tabs)/tasks')}}><Text style={s.num}>{v}</Text><Text style={s.label}>{k}</Text></Pressable>)}</View>
    <Text style={s.title}>Quick actions</Text>
-   <View style={s.actions}>{['+ Client','Create Content','SEO Check','Report'].map(x=><Pressable style={s.action} key={x}><Text style={s.actionText}>{x}</Text></Pressable>)}</View>
+   <View style={s.actions}>{actions.map(x=><Pressable style={s.action} key={x.label} onPress={x.go}><Text style={s.actionText}>{x.label}</Text></Pressable>)}</View>
    <View style={s.ai}><Text style={s.aiTitle}>AI Assistant</Text><Text style={s.aiText}>AI connection will be added in the final integration stage.</Text></View>
  </ScrollView>
 }
