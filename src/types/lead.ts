@@ -1,0 +1,3 @@
+export type LeadStage='new'|'contacted'|'qualified'|'follow_up'|'quotation'|'won'|'lost';
+export type LeadSource='Meta Ads'|'Google Ads'|'Website'|'Google Business'|'Instagram'|'Facebook'|'Referral'|'Walk-in'|'Other';
+export type Lead={id:string;name:string;phone:string;email:string;clientId:string;clientName:string;source:LeadSource;service:string;stage:LeadStage;value:number;nextFollowUp:string;notes:string;createdAt:string;updatedAt:string};
