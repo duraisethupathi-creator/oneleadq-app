@@ -1,0 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';import { defaultLeads } from '../data/defaultLeads';import { Lead } from '../types/lead';
+const KEY='@oneleadq/leads/v1';
+export async function loadLeads():Promise<Lead[]>{const raw=await AsyncStorage.getItem(KEY);if(!raw){await AsyncStorage.setItem(KEY,JSON.stringify(defaultLeads));return defaultLeads;}try{return JSON.parse(raw) as Lead[]}catch{await AsyncStorage.setItem(KEY,JSON.stringify(defaultLeads));return defaultLeads;}}
+export async function saveLeads(leads:Lead[]){await AsyncStorage.setItem(KEY,JSON.stringify(leads));}
