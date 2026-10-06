@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Dimensions, Image, PanResponder, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 type Mood='idle'|'happy'|'thinking'|'idea'|'alert'|'success';
+type AssistantState='idle'|'walking'|'listening'|'thinking'|'talking';
 
 const moodUI:Record<Mood,{face:string,label:string,accent:string}>={
  idle:{face:'😊',label:'Ready',accent:'#0B5D4B'},
@@ -24,18 +25,24 @@ const walkFrames=[
  require('../../asset/assistant/walk/walk_08.png'),
 ];
 
-function WalkingMascot(){
+function AssistantMascot({state='idle'}:{state?:AssistantState}){
  const [frame,setFrame]=useState(0);
+ const isWalking=state==='walking';
  useEffect(()=>{
-  const timer=setInterval(()=>setFrame(v=>(v+1)%walkFrames.length),120);
+  setFrame(0);
+  if(!isWalking)return;
+  const timer=setInterval(()=>setFrame(v=>(v+1)%walkFrames.length),160);
   return()=>clearInterval(timer);
- },[]);
- return <Image source={walkFrames[frame]} style={s.mascot} resizeMode="contain"/>;
+ },[isWalking]);
+ // Until dedicated state assets arrive, non-walking states use one locked frame.
+ const source=isWalking?walkFrames[frame]:walkFrames[0];
+ return <View style={s.mascotViewport}><Image source={source} style={s.mascot} resizeMode="contain"/></View>;
 }
 
 export default function FloatingAssistant(){
  const [open,setOpen]=useState(false);
  const [mood,setMood]=useState<Mood>('happy');
+ const [assistantState,setAssistantState]=useState<AssistantState>('idle');
  const [message,setMessage]=useState("Hi! I'm your OneLeadQ AI Assistant. How can I help you today?");
  const [input,setInput]=useState('');
  const pos=useRef(new Animated.ValueXY({x:0,y:0})).current;
@@ -52,13 +59,13 @@ export default function FloatingAssistant(){
    Animated.spring(pos,{toValue:{x,y},useNativeDriver:false}).start();
   }
  }),[pos]);
- function quick(text:string,next:Mood){setMood('thinking');setMessage('Checking…');setTimeout(()=>{setMood(next);setMessage(text)},650)}
- function send(){const q=input.trim();if(!q)return;setInput('');quick(`I heard: “${q}”. Live AI answers will connect in the final AI integration stage.`,'idea')}
+ function quick(text:string,next:Mood){setAssistantState('thinking');setMood('thinking');setMessage('Checking…');setTimeout(()=>{setMood(next);setAssistantState('talking');setMessage(text);setTimeout(()=>setAssistantState('idle'),900)},650)}
+ function send(){const q=input.trim();if(!q)return;setAssistantState('listening');setInput('');setTimeout(()=>quick(`I heard: “${q}”. Live AI answers will connect in the final AI integration stage.`,'idea'),220)}
  const ui=moodUI[mood];
  return <Animated.View pointerEvents="box-none" style={[s.wrap,{transform:pos.getTranslateTransform()}]}>
   {open&&<View style={s.panel}>
    <View style={s.head}><View><Text style={s.title}>OneLeadQ Assistant</Text><Text style={[s.state,{color:ui.accent}]}>{ui.label}</Text></View><Pressable accessibilityLabel="Close assistant" onPress={()=>setOpen(false)} style={s.close}><Ionicons name="close" size={20}/></Pressable></View>
-   <View style={s.reply}><View style={s.replyMascot}><WalkingMascot/></View><Text style={s.replyText}>{message}</Text></View>
+   <View style={s.reply}><View style={s.replyMascot}><AssistantMascot state={assistantState}/></View><Text style={s.replyText}>{message}</Text></View>
    <View style={s.actions}>
     <Pressable style={s.chip} onPress={()=>quick('I can review the current campaign and flag low-performance areas.','idea')}><Text style={s.chipText}>Ads idea</Text></Pressable>
     <Pressable style={s.chip} onPress={()=>quick('SEO check is ready. I can surface title, keyword and local SEO issues.','success')}><Text style={s.chipText}>SEO check</Text></Pressable>
@@ -68,7 +75,7 @@ export default function FloatingAssistant(){
   </View>}
   <View {...pan.panHandlers}>
    <Pressable accessibilityLabel="Open OneLeadQ assistant" onPress={()=>setOpen(v=>!v)} style={s.bot}>
-    <WalkingMascot/>
+    <AssistantMascot state={assistantState}/>
     <View style={[s.dot,{backgroundColor:ui.accent}]}/>
    </Pressable>
   </View>
@@ -78,6 +85,7 @@ export default function FloatingAssistant(){
 const s=StyleSheet.create({
  wrap:{position:'absolute',right:12,bottom:82,zIndex:999,elevation:30,alignItems:'flex-end'},
  bot:{width:100,height:122,alignItems:'center',justifyContent:'flex-end',shadowColor:'#000',shadowOpacity:.16,shadowRadius:8,shadowOffset:{width:0,height:4}},
+ mascotViewport:{width:'100%',height:'100%',overflow:'hidden',alignItems:'center',justifyContent:'flex-end'},
  mascot:{width:'100%',height:'100%'},
  dot:{position:'absolute',right:5,top:5,width:13,height:13,borderRadius:7,borderWidth:2,borderColor:'white'},
  panel:{width:310,maxWidth:'90%',backgroundColor:'#FFFDF8',borderRadius:22,padding:14,marginBottom:8,borderWidth:1,borderColor:'#E5D8A8',shadowColor:'#000',shadowOpacity:.18,shadowRadius:12,shadowOffset:{width:0,height:5}},
