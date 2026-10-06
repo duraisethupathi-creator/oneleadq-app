@@ -42,7 +42,7 @@ jobs:
       - name: Force production JS bundle
         run: |
           mkdir -p android/app/src/main/assets
-          npx expo export:embed --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+          npx expo export:embed --platform android --dev false --entry-file node_modules/expo-router/entry.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
           test -s android/app/src/main/assets/index.android.bundle
 
       - name: Build standalone release APK
