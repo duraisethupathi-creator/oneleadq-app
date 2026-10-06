@@ -6,6 +6,9 @@ on:
     branches:
       - feature/floating-ai-assistant
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -38,9 +41,23 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Prepare direct APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk OneLeadQ-Stage10-debug.apk
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: OneLeadQ-Android-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: OneLeadQ-Stage10-debug.apk
+          compression-level: 0
           if-no-files-found: error
+
+      - name: Publish APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: stage10-latest
+          name: OneLeadQ Stage 10 Test APK
+          prerelease: true
+          make_latest: false
+          files: OneLeadQ-Stage10-debug.apk
+          overwrite_files: true
