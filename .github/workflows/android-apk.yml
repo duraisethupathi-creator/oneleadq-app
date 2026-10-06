@@ -37,18 +37,22 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --non-interactive
 
-      - name: Build debug APK
+      - name: Build standalone release APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleRelease
+
+      - name: Verify JS bundle is packaged
+        run: |
+          unzip -l android/app/build/outputs/apk/release/app-release.apk | grep -E 'index.android.bundle|assets/index.android.bundle' || (echo "JS bundle missing from release APK" && exit 1)
 
       - name: Prepare direct APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk OneLeadQ-Stage10-debug.apk
+        run: cp android/app/build/outputs/apk/release/app-release.apk OneLeadQ-Stage10.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OneLeadQ-Android-APK
-          path: OneLeadQ-Stage10-debug.apk
+          name: OneLeadQ-Android-Standalone-APK
+          path: OneLeadQ-Stage10.apk
           compression-level: 0
           if-no-files-found: error
 
@@ -56,8 +60,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: stage10-latest
-          name: OneLeadQ Stage 10 Test APK
+          name: OneLeadQ Stage 10 Standalone APK
           prerelease: true
           make_latest: false
-          files: OneLeadQ-Stage10-debug.apk
+          files: OneLeadQ-Stage10.apk
           overwrite_files: true
