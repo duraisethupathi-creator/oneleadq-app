@@ -13,6 +13,8 @@ jobs:
   build-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      NODE_ENV: production
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,13 +39,20 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --non-interactive
 
+      - name: Force production JS bundle
+        run: |
+          mkdir -p android/app/src/main/assets
+          npx expo export:embed --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+          test -s android/app/src/main/assets/index.android.bundle
+
       - name: Build standalone release APK
         working-directory: android
         run: ./gradlew assembleRelease
 
       - name: Verify JS bundle is packaged
         run: |
-          unzip -l android/app/build/outputs/apk/release/app-release.apk | grep -E 'index.android.bundle|assets/index.android.bundle' || (echo "JS bundle missing from release APK" && exit 1)
+          unzip -l android/app/build/outputs/apk/release/app-release.apk | grep -E 'assets/index.android.bundle|index.android.bundle'
+          unzip -p android/app/build/outputs/apk/release/app-release.apk assets/index.android.bundle | head -c 32 | grep -q . || (echo "Packaged JS bundle is empty" && exit 1)
 
       - name: Prepare direct APK
         run: cp android/app/build/outputs/apk/release/app-release.apk OneLeadQ-Stage10.apk
