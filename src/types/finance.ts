@@ -1,0 +1,1 @@
+export type InvoiceStatus='draft'|'sent'|'paid'|'overdue'|'cancelled';export interface Invoice{id:string;clientId:string;clientName:string;invoiceNo:string;amount:number;status:InvoiceStatus;billingDate:string;dueDate:string;service:string;notes:string;createdAt:string;updatedAt:string}
