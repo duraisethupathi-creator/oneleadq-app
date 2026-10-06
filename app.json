@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "scheme": "oneleadq",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "android": {
       "package": "com.oneleadq.app"
     },
