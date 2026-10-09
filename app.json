@@ -12,6 +12,10 @@
     },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker",
+      "expo-speech-recognition"
+    ]
   }
 }

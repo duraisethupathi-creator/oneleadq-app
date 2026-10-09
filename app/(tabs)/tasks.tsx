@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { loadClients } from '../../src/storage/clientStorage';
@@ -16,8 +17,44 @@ const blank=():AgencyTask=>({id:'',title:'',clientId:'',clientName:'',dueDate:ne
 export default function Tasks(){
  const [tasks,setTasks]=useState<AgencyTask[]>([]); const [clients,setClients]=useState<Client[]>([]);
  const [filter,setFilter]=useState<Filter>('today'); const [editor,setEditor]=useState<AgencyTask|null>(null); const [selected,setSelected]=useState<AgencyTask|null>(null); const [loading,setLoading]=useState(true);
- useEffect(()=>{Promise.all([loadTasks(),loadClients()]).then(([t,c])=>{setTasks(t);setClients(c.filter(x=>x.status==='active'));}).catch(()=>Alert.alert('Load error','Tasks could not be loaded.')).finally(()=>setLoading(false));},[]);
- const today=new Date().toISOString().slice(0,10);
+useFocusEffect(
+  useCallback(() => {
+    let active = true;
+
+    const refreshTasks = async () => {
+      try {
+        const [t, c] = await Promise.all([
+          loadTasks(),
+          loadClients(),
+        ]);
+
+        if (!active) return;
+
+        setTasks(t);
+        setClients(
+          c.filter(x => x.status === 'active')
+        );
+      } catch {
+        if (active) {
+          Alert.alert(
+            'Load error',
+            'Tasks could not be loaded.'
+          );
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    refreshTasks();
+
+    return () => {
+      active = false;
+    };
+  }, [])
+); const today=new Date().toISOString().slice(0,10);
  const visible=useMemo(()=>tasks.filter(t=>filter==='today'?t.dueDate===today&&t.status!=='completed':filter==='upcoming'?t.dueDate>today&&t.status!=='completed':filter==='pending'?['pending','in_progress'].includes(t.status):filter==='approval'?t.approval==='waiting':t.status==='completed'),[tasks,filter,today]);
  async function commit(next:AgencyTask[]){setTasks(next);try{await saveTasks(next);}catch{Alert.alert('Save failed','Task change could not be saved.');}}
  function save(){if(!editor?.title.trim())return Alert.alert('Task title required');if(!editor.clientId)return Alert.alert('Client required','Select a client.');if(!/^\d{4}-\d{2}-\d{2}$/.test(editor.dueDate))return Alert.alert('Invalid date','Use YYYY-MM-DD.');
@@ -36,7 +73,19 @@ export default function Tasks(){
    <View style={s.top}><Pressable onPress={()=>setSelected(null)}><Ionicons name="close" size={28} color={colors.green}/></Pressable><Text style={s.topTitle}>Task details</Text><Pressable onPress={()=>{if(selected){setEditor({...selected});setSelected(null);}}}><Text style={s.action}>Edit</Text></Pressable></View>
    {selected&&<ScrollView contentContainerStyle={s.detail}><Text style={s.detailTitle}>{selected.title}</Text><Text style={s.detailClient}>{selected.clientName}</Text><Info label="Due date" value={selected.dueDate}/><Info label="Priority" value={selected.priority}/><Info label="Status" value={selected.status.replace('_',' ')}/><Info label="Approval" value={selected.approval}/><Text style={s.section}>Notes</Text><Text style={s.notes}>{selected.notes||'No notes.'}</Text>
     <Text style={s.section}>Task status</Text><View style={s.wrap}>{(['pending','in_progress','waiting_approval','completed'] as TaskStatus[]).map(x=><Pressable key={x} style={[s.choice,selected.status===x&&s.choiceOn]} onPress={()=>patch(selected,{status:x})}><Text style={[s.choiceText,selected.status===x&&s.choiceTextOn]}>{x.replace('_',' ')}</Text></Pressable>)}</View>
-    <Text style={s.section}>Approval</Text><View style={s.wrap}>{(['draft','waiting','approved','rejected'] as ApprovalStatus[]).map(x=><Pressable key={x} style={[s.choice,selected.approval===x&&s.choiceOn]} onPress={()=>patch(selected,{approval:x,status:x==='waiting'?'waiting_approval':selected.status})}><Text style={[s.choiceText,selected.approval===x&&s.choiceTextOn]}>{x}</Text></Pressable>)}</View>
+    <Text style={s.section}>Approval</Text><View style={s.wrap}>{(['draft','waiting','approved','rejected'] as ApprovalStatus[]).map(x=><Pressable key={x} style={[s.choice,selected.approval===x&&s.choiceOn]} onPress={() =>
+  patch(selected, {
+    approval: x,
+    status:
+      x === 'waiting'
+        ? 'waiting_approval'
+        : x === 'approved'
+        ? 'in_progress'
+        : x === 'rejected'
+        ? 'pending'
+        : selected.status,
+  })
+}><Text style={[s.choiceText,selected.approval===x&&s.choiceTextOn]}>{x}</Text></Pressable>)}</View>
     <Pressable style={s.delete} onPress={()=>remove(selected)}><Text style={s.deleteText}>Delete task</Text></Pressable>
    </ScrollView>}
   </SafeAreaView></Modal>

@@ -21,3 +21,24 @@ export async function loadClients(): Promise<Client[]> {
 export async function saveClients(clients: Client[]) {
   await AsyncStorage.setItem(KEY, JSON.stringify(clients));
 }
+const CURRENT_CLIENT_KEY = '@oneleadq/current-client/v1';
+
+export async function saveCurrentClientId(
+  clientId: string
+) {
+  await AsyncStorage.setItem(
+    CURRENT_CLIENT_KEY,
+    clientId
+  );
+}
+
+export async function loadCurrentClientId():
+  Promise<string | null> {
+  return AsyncStorage.getItem(CURRENT_CLIENT_KEY);
+}
+
+export async function clearCurrentClientId() {
+  await AsyncStorage.removeItem(
+    CURRENT_CLIENT_KEY
+  );
+}
