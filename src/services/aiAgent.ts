@@ -1,130 +1,60 @@
-const AI_AGENT_URL = "http://192.168.1.2:3001";
-
+// Public connection address only; provider credentials stay on the backend.
+const AI_AGENT_URL = process.env.EXPO_PUBLIC_AI_AGENT_URL?.trim().replace(/\/$/, '') || 'http://192.168.1.2:3001';
 const AI_REQUEST_TIMEOUT = 15000;
 const HEALTH_TIMEOUT = 5000;
-
 export type AIClientContext = {
-  name: string;
-  businessType?: string;
-  website?: string;
-  location?: string;
-  services?: string[];
-  notes?: string;
+  name: string; businessType?: string; website?: string; location?: string;
+  services?: string[]; notes?: string;
 };
-
 export type AIAgentResponse = {
-  ok: boolean;
-  provider?: string;
-  model?: string;
-  agent?: string;
-  agentId?: string;
-  reply?: string;
-  error?: string;
+  ok: boolean; provider?: string; model?: string; agent?: string; agentId?: string;
+  reply?: string; error?: string;
 };
-
-async function fetchWithTimeout(
-  url: string,
-  options: RequestInit = {},
-  timeoutMs: number
-) {
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number) {
   const controller = new AbortController();
-
-  const timeoutId = setTimeout(() => {
-    controller.abort();
-  }, timeoutMs);
-
+  const upstream = options.signal;
+  const abort = () => controller.abort();
+  if (upstream?.aborted) controller.abort();
+  upstream?.addEventListener('abort', abort, { once: true });
+  const timer = setTimeout(abort, timeoutMs);
   try {
-    return await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    // Timeout includes consuming the response body, not only receiving headers.
+    const data: unknown = await response.json();
+    return { response, data };
   } finally {
-    clearTimeout(timeoutId);
+    clearTimeout(timer);
+    upstream?.removeEventListener('abort', abort);
   }
 }
-
-export async function askOneLeadQAgent(
-  message: string,
-  clientContext?: AIClientContext
-): Promise<AIAgentResponse> {
+export async function askOneLeadQAgent(message: string, clientContext?: AIClientContext, signal?: AbortSignal): Promise<AIAgentResponse> {
   const cleanMessage = message.trim();
-
-  if (!cleanMessage) {
-    throw new Error("Message is required");
-  }
-
+  if (!cleanMessage) throw new Error('Message is required');
   try {
-    const response = await fetchWithTimeout(
-      `${AI_AGENT_URL}/ai`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: cleanMessage,
-          clientContext,
-        }),
-      },
-      AI_REQUEST_TIMEOUT
-    );
-
-    const data: AIAgentResponse =
-      await response.json();
-
-    if (!response.ok || !data.ok) {
-      throw new Error(
-        data.error ||
-          "OneLeadQ AI Agent request failed"
-      );
+    const { response, data } = await fetchWithTimeout(AI_AGENT_URL + '/ai', {
+      method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: cleanMessage, clientContext }),
+    }, AI_REQUEST_TIMEOUT);
+    if (!data || typeof data !== 'object' || !('ok' in data) || data.ok !== true || !response.ok) {
+      throw new Error('OneLeadQ AI Agent request failed');
     }
-
-    return data;
+    if (!('reply' in data) || typeof data.reply !== 'string') throw new Error('Invalid AI reply');
+    return data as AIAgentResponse;
   } catch (error) {
-    console.error(
-      "OneLeadQ AI Agent Error:",
-      error
-    );
-
-    if (
-      error instanceof Error &&
-      error.name === "AbortError"
-    ) {
-      throw new Error(
-        "OneLeadQ AI is not responding. Please check the AI Agent connection and try again."
-      );
+    // Never display raw backend errors or log client context.
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('OneLeadQ AI request stopped or timed out. Please try again.');
     }
-
-    throw new Error(
-      "Unable to connect to OneLeadQ AI. Please check that the AI Agent is running and your phone is connected to the same network."
-    );
+    throw new Error('Unable to connect to OneLeadQ AI. Check the AI Agent and your network connection.');
   }
 }
-
 export async function checkAIAgentHealth() {
   try {
-    const response = await fetchWithTimeout(
-      `${AI_AGENT_URL}/health`,
-      {},
-      HEALTH_TIMEOUT
-    );
-
-    const data = await response.json();
-
-    return {
-      connected:
-        response.ok &&
-        data.ok === true,
-      ...data,
-    };
+    const { response, data } = await fetchWithTimeout(AI_AGENT_URL + '/health', {}, HEALTH_TIMEOUT);
+    const health = data && typeof data === 'object' ? data as Record<string, unknown> : {};
+    return { ...health, connected: response.ok && health.ok === true };
   } catch (error) {
-    return {
-      connected: false,
-      error:
-        error instanceof Error &&
-        error.name === "AbortError"
-          ? "AI Agent connection timed out"
-          : "Unable to connect to AI Agent",
-    };
+    return { connected: false, error: error instanceof Error && error.name === 'AbortError'
+      ? 'AI Agent connection timed out' : 'Unable to connect to AI Agent' };
   }
 }

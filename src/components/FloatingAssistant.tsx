@@ -1,400 +1,512 @@
-﻿import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { Animated, Dimensions, Image, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { forwardRef, memo, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { Animated, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View, StyleSheet, useWindowDimensions } from 'react-native';
 import { askOneLeadQAgent } from '../services/aiAgent';
-import {
-  loadClients,
-  loadCurrentClientId,
-} from '../storage/clientStorage';
-import { Client } from '../types/client';
-type Mood='idle'|'happy'|'thinking'|'idea'|'alert'|'success';
-type AssistantState='idle'|'walking'|'listening'|'thinking'|'talking';
+import { loadClients, loadCurrentClientId } from '../storage/clientStorage';
+import { AssistantReaction, reactionVisuals, readableReply, requestReaction, resolveReaction, responseReaction } from '../assistant/reactions';
+import { VoiceSession } from '../assistant/VoiceSession';
+import { ASSISTANT_GREETING, getAssistantSpeechOptions } from '../assistant/speechVoice';
 
-const moodUI:Record<Mood,{face:string,label:string,accent:string}>={
- idle:{face:'😊',label:'Ready',accent:'#0B5D4B'},
- happy:{face:'😄',label:'Hello!',accent:'#0B5D4B'},
- thinking:{face:'🤔',label:'Thinking…',accent:'#C28A2C'},
- idea:{face:'💡',label:'I have an idea',accent:'#C28A2C'},
- alert:{face:'😮',label:'Needs attention',accent:'#C84B45'},
- success:{face:'🥳',label:'Done!',accent:'#0B8A68'},
-};
+const SLEEP_AFTER_MS = 60000;
+const WALK_FOR_MS = 15000;
 
-const walkFrames=[
- require('../../asset/assistant/walk/walk_01.png'),
- require('../../asset/assistant/walk/walk_02.png'),
- require('../../asset/assistant/walk/walk_03.png'),
- require('../../asset/assistant/walk/walk_04.png'),
- require('../../asset/assistant/walk/walk_05.png'),
- require('../../asset/assistant/walk/walk_06.png'),
- require('../../asset/assistant/walk/walk_07.png'),
- require('../../asset/assistant/walk/walk_08.png'),
-];
-
-function AssistantMascot({state='idle',facingLeft=false}:{state?:AssistantState;facingLeft?:boolean}){
- const [frame,setFrame]=useState(0);
- const isWalking=state==='walking';
- useEffect(()=>{
-  setFrame(0);
-  if(!isWalking)return;
-  const timer=setInterval(()=>setFrame(v=>(v+1)%walkFrames.length),160);
-  return()=>clearInterval(timer);
- },[isWalking]);
- const source=isWalking?walkFrames[frame]:walkFrames[0];
- return <View style={s.mascotViewport}><Image source={source} style={[s.mascot,{transform:[{scaleX:facingLeft?-1:1}]}]} resizeMode="contain"/></View>;
+// TEMPORARY development tracing: no transcript, client context, or backend payloads.
+function assistantLog(boundary: string, details?: Record<string, unknown>) {
+  if (__DEV__) console.log('[Assistant] ' + boundary, details ?? '');
 }
 
-export type FloatingAssistantHandle={handleScreenTouch:()=>void};
+const AssistantMascot = memo(function AssistantMascot({ reaction, facingLeft = false, active }: {
+  reaction: AssistantReaction; facingLeft?: boolean; active: boolean;
+}) {
+  const visual = reactionVisuals[reaction];
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    setFrame(0);
+    if (!active || visual.frames.length < 2) return;
+    const timer = setInterval(() => setFrame(value => (value + 1) % visual.frames.length), visual.frameMs);
+    return () => clearInterval(timer);
+  }, [active, visual]);
+  return <View style={s.mascotViewport}><Image accessibilityLabel={visual.label}
+    source={visual.frames[frame % visual.frames.length]} resizeMode="contain"
+    style={[s.mascot, { transform: [{ scaleX: facingLeft ? -1 : 1 }] }]} /></View>;
+});
 
-const FloatingAssistant=forwardRef<FloatingAssistantHandle>(function FloatingAssistant(_,ref){
- const [open,setOpen]=useState(false);
- const [mood,setMood]=useState<Mood>('happy');
- const [assistantState,setAssistantState]=useState<AssistantState>('walking');
- const [facingLeft,setFacingLeft]=useState(true);
- const [message,setMessage]=useState("Hi! I'm your OneLeadQ AI Assistant. How can I help you today?");
- const [input,setInput]=useState('');
- const [textMode,setTextMode]=useState(false);
- const [currentClient, setCurrentClient] = useState<Client | null>(null);
- useEffect(() => {
-  let active = true;
+export type FloatingAssistantHandle = { handleScreenTouch: () => void };
+const FloatingAssistant = forwardRef<FloatingAssistantHandle>(function FloatingAssistant(_, ref) {
+  const [open, setOpen] = useState(false);
+  const [textMode, setTextMode] = useState(false);
+  const [input, setInput] = useState('');
+  const [transcript, setTranscript] = useState('');
+  const [message, setMessage] = useState("Hi! I'm your OneLeadQ AI Assistant. How can I help you today?");
+  const [notice, setNotice] = useState('');
+  const [language, setLanguage] = useState<'ta-IN' | 'en-IN'>('ta-IN');
+  const [busy, setBusy] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [talking, setTalking] = useState(false);
+  const [pendingReaction, setPendingReaction] = useState<AssistantReaction>('thinking');
+  const [outcome, setOutcome] = useState<AssistantReaction>('idle');
+  const [moving, setMoving] = useState(true);
+  const [sleeping, setSleeping] = useState(false);
+  const [active, setActive] = useState(AppState.currentState === 'active');
+  const [facingLeft, setFacingLeft] = useState(true);
+  const { width, height } = useWindowDimensions();
+  const travel = Math.max(0, width - 124);
+  const walkX = useRef(new Animated.Value(0)).current;
+  const mounted = useRef(true);
+  const openRef = useRef(false);
+  const activeRef = useRef(AppState.currentState === 'active');
+  const sending = useRef(false);
+  const voiceStarting = useRef(false);
+  const micAttempt = useRef(0);
+  const lifecycle = useRef(0);
+  const ttsGeneration = useRef(0);
+  const request = useRef<AbortController | null>(null);
+  const voice = useRef(new VoiceSession()).current;
+  const recognitionEnd = useRef({ reason: 'native end (endpoint/platform reason not exposed)', startedAt: 0, speechEndObserved: false });
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const walkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function loadCurrentClient() {
+  function valid(epoch: number) {
+    return mounted.current && openRef.current && activeRef.current && lifecycle.current === epoch;
+  }
+  function clearIdleTimers() {
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    if (walkTimer.current) clearTimeout(walkTimer.current);
+    idleTimer.current = walkTimer.current = null;
+  }
+  function wake() {
+    clearIdleTimers();
+    setSleeping(false);
+    idleTimer.current = setTimeout(() => { setSleeping(true); setMoving(false); }, SLEEP_AFTER_MS);
+  }
+  function cancelRecognition(reason = 'explicit cancellation') {
+    recognitionEnd.current.reason = reason;
+    assistantLog('recognition abort requested', { reason, sessionId: voice.current?.id });
+    assistantLog('mic attempt cancelled', { attemptId: micAttempt.current, reason });
+    ++micAttempt.current;
+    voice.cancel();
+    voiceStarting.current = false;
+    setStarting(false);
+    setListening(false);
+    try { ExpoSpeechRecognitionModule.abort(); } catch { /* Native session may already be inactive. */ }
+  }
+  function stopSpeech() {
+    ++ttsGeneration.current;
+    setTalking(false);
+    void Speech.stop().catch(() => { /* No utterance may be active. */ });
+  }
+  function cancelActivity(reason: string) {
+    ++lifecycle.current;
+    request.current?.abort();
+    request.current = null;
+    sending.current = false;
+    setBusy(false);
+    cancelRecognition(reason);
+    stopSpeech();
+    clearIdleTimers();
+  }
+
+  // No microphone auto-restart: the user explicitly starts each recording.
+  async function speak(text: string, epoch: number) {
+    const generation = ++ttsGeneration.current;
+    const current = () => valid(epoch) && generation === ttsGeneration.current;
     try {
-      const currentClientId = await loadCurrentClientId();
+      await Speech.stop();
+      if (!current()) return;
+      const speechOptions = await getAssistantSpeechOptions();
+      if (!current()) return;
+      setTalking(true);
+      const finish = () => {
+        if (!current()) return;
+        setTalking(false);
+        setOutcome(previous => previous === 'result' ? 'success' : previous);
+        wake();
+      };
+      const plain = readableReply(text);
+      const chunks = plain.match(/[\s\S]{1,3500}/g) ?? [];
+      let index = 0;
+      const speakNext = () => {
+        if (!current()) return;
+        if (index >= chunks.length) { finish(); return; }
+        Speech.speak(chunks[index++], {
+        ...speechOptions,
+        onDone: speakNext, onStopped: finish,
+        onError: () => { if (current()) { setTalking(false); setNotice('Speech playback unavailable. Your reply is shown above.'); wake(); } },
+        });
+      };
+      speakNext();
+    } catch {
+      if (current()) { setTalking(false); setNotice('Speech playback unavailable. Your reply is shown above.'); wake(); }
+    }
+  }
 
-      if (!currentClientId) {
-        if (active) setCurrentClient(null);
+  async function send(value = input) {
+    const q = value.trim();
+    if (!q || sending.current || voiceStarting.current || voice.current || !openRef.current || !activeRef.current) return;
+    // Set synchronously before any await; renders cannot protect against repeated events.
+    sending.current = true;
+    const epoch = lifecycle.current;
+    const controller = new AbortController();
+    request.current = controller;
+    stopSpeech();
+    clearIdleTimers();
+    setSleeping(false);
+    setBusy(true);
+    setOutcome('idle');
+    setPendingReaction(requestReaction(q));
+    setNotice('');
+    setInput('');
+    setMessage('OneLeadQ AI is processing your request…');
+    try {
+      // Read at send time: this host stays mounted when the selected client changes.
+      const id = await loadCurrentClientId();
+      const clients = id ? await loadClients() : [];
+      if (!valid(epoch) || controller.signal.aborted) return;
+      const client = clients.find(item => item.id === id && item.status === 'active');
+      const result = await askOneLeadQAgent(q, client ? {
+        name: client.name, businessType: client.businessType, website: client.website,
+        location: client.location, services: client.services, notes: client.notes,
+      } : undefined, controller.signal);
+      if (!valid(epoch)) return;
+      if (!result.reply?.trim()) throw new Error('OneLeadQ AI returned an empty reply. Please try again.');
+      const reply = readableReply(result.reply);
+      setMessage(reply);
+      setOutcome(responseReaction(reply));
+      void speak(reply, epoch);
+    } catch {
+      if (valid(epoch) && !controller.signal.aborted) {
+        setOutcome('error');
+        setInput(q);
+        setMessage('Unable to finish this request. Check the AI backend connection and try again.');
+      }
+    } finally {
+      if (request.current === controller) {
+        request.current = null;
+        sending.current = false;
+        if (valid(epoch)) { setBusy(false); wake(); }
+      }
+    }
+  }
+
+  useSpeechRecognitionEvent('start', () => {
+    assistantLog('recognition start', { hasSession: !!voice.current, open: openRef.current, active: activeRef.current });
+    if (!openRef.current || !activeRef.current || !voice.current || voice.current.cancelled) {
+      try { ExpoSpeechRecognitionModule.abort(); } catch {}
+      return;
+    }
+    voice.start();
+    setNotice('கேட்கிறேன்… பேசுங்கள்.');
+    setStarting(false);
+    setListening(true);
+  });
+  useSpeechRecognitionEvent('speechend', () => {
+    if (!voice.current || voice.current.cancelled) return;
+    recognitionEnd.current.speechEndObserved = true;
+    assistantLog('native speech endpoint', { sessionId: voice.current.id, note: 'May indicate silence; no app timer or restart is triggered.' });
+  });
+  useSpeechRecognitionEvent('speechstart', () => {
+    if (voice.current && !voice.current.cancelled) recognitionEnd.current.speechEndObserved = false;
+  });
+  useSpeechRecognitionEvent('result', event => {
+    assistantLog('recognition result', { final: event.isFinal, alternatives: event.results.length });
+    if (!openRef.current || !activeRef.current || !voice.current || voice.current.cancelled) return;
+    const text = event.results[0]?.transcript?.trim();
+    if (!text) return;
+    voice.result(text, event.isFinal);
+    setTranscript(voice.current.transcript);
+  });
+  useSpeechRecognitionEvent('error', event => {
+    assistantLog('recognition error', { code: event.error, hasSession: !!voice.current });
+    if (!voice.current) {
+      assistantLog(event.error === 'aborted' ? 'stale abort ignored' : 'unowned recognition error ignored', { attemptId: micAttempt.current, preparing: voiceStarting.current });
+      return;
+    }
+    ++micAttempt.current;
+    const cancelled = voice.current.cancelled;
+    if (!cancelled) recognitionEnd.current.reason = event.error === 'no-speech' || event.error === 'speech-timeout'
+      ? 'native silence/no-speech: ' + event.error : 'native error: ' + event.error;
+    const completedBeforeSilence = !cancelled && voice.current.final
+      && (event.error === 'no-speech' || event.error === 'speech-timeout');
+    // A continuous recognizer may report silence after already finalizing segments.
+    // Preserve those segments for terminal end; fatal errors/aborts still discard them.
+    if (!completedBeforeSilence) voice.cancel();
+    voiceStarting.current = false;
+    if (!mounted.current) return;
+    setStarting(false);
+    setListening(false);
+    if (cancelled || !openRef.current || !activeRef.current) return;
+    if (completedBeforeSilence) { setNotice('Finishing recording…'); return; }
+    setOutcome(event.error === 'no-speech' || event.error === 'speech-timeout' ? 'idle' : 'error');
+    setNotice(event.error === 'no-speech' || event.error === 'speech-timeout'
+      ? 'குரல் கேட்கவில்லை. மீண்டும் Mic-ஐ அழுத்திப் பேசுங்கள்.'
+      : event.error === 'not-allowed' ? 'Microphone permission is required. Enable it in app settings.'
+      : 'Voice recognition unavailable. Try again or use Text Chat.');
+    wake();
+  });
+  useSpeechRecognitionEvent('end', () => {
+    assistantLog('recognition end', { hasSession: !!voice.current, cancelled: voice.current?.cancelled,
+      reason: voice.current ? recognitionEnd.current.reason : 'stale/unowned end',
+      speechEndObserved: recognitionEnd.current.speechEndObserved,
+      elapsedMs: voice.current && recognitionEnd.current.startedAt ? Date.now() - recognitionEnd.current.startedAt : undefined,
+      appRecordingTimeout: false,
+    });
+    if (!voice.current) { assistantLog('stale end ignored', { attemptId: micAttempt.current, preparing: voiceStarting.current }); return; }
+    ++micAttempt.current;
+    const cancelled = voice.current.cancelled;
+    const text = voice.end(); // Consume before sending; repeated end events have nothing to submit.
+    voiceStarting.current = false;
+    if (!mounted.current) return;
+    setStarting(false);
+    setListening(false);
+    if (!openRef.current || !activeRef.current || cancelled) return;
+    if (text) void send(text);
+    else { setNotice('No final speech captured. Please try again.'); wake(); }
+  });
+
+  async function startListening() {
+    const blocked = sending.current ? 'AI is processing your previous request.'
+      : voiceStarting.current ? 'Preparing the microphone. Please wait…'
+      : voice.current ? 'The previous recording is still finishing. Please wait or reopen the assistant.'
+      : !openRef.current ? 'Open the assistant before recording.'
+      : !activeRef.current ? 'Return to the app before recording.' : null;
+    assistantLog('startListening entered', {
+      sending: sending.current, preparing: voiceStarting.current, hasSession: !!voice.current,
+      sessionCancelled: voice.current?.cancelled, open: openRef.current,
+      active: activeRef.current, appState: AppState.currentState,
+    });
+    if (blocked) {
+      assistantLog('mic blocked', { reason: blocked });
+      setNotice(blocked);
+      return;
+    }
+    const attemptId = ++micAttempt.current;
+    assistantLog('mic attempt created', { attemptId });
+    voiceStarting.current = true;
+    // Mic preparation owns its token; unrelated speech events cannot invalidate it.
+    const currentAttempt = (boundary: string) => {
+      const current = micAttempt.current === attemptId && mounted.current && openRef.current && activeRef.current;
+      if (!current) assistantLog('mic start cancelled', {
+        boundary, attemptId, currentAttemptId: micAttempt.current,
+        mounted: mounted.current, open: openRef.current, active: activeRef.current,
+      });
+      return current;
+    };
+    setStarting(true);
+    setOutcome('idle');
+    setNotice('Preparing to listen… மைக் தயாராகிறது…');
+    setTranscript('');
+    clearIdleTimers();
+    setSleeping(false);
+    stopSpeech();
+    try {
+      let permission = await ExpoSpeechRecognitionModule.getPermissionsAsync();
+      assistantLog('permission status', { attemptId, granted: permission.granted, status: permission.status, canAskAgain: permission.canAskAgain });
+      if (!currentAttempt('permission status')) return;
+      if (!permission.granted && permission.canAskAgain) {
+        assistantLog('requesting mic permission', { attemptId });
+        permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      }
+      assistantLog('permission result', {
+        attemptId, granted: permission.granted, status: permission.status, canAskAgain: permission.canAskAgain,
+      });
+      if (!currentAttempt('permission result')) return;
+      if (!permission.granted) {
+        setOutcome('alert');
+        setNotice('Microphone permission is required. Enable it in app settings or use Text Chat.');
         return;
       }
-
-      const clients = await loadClients();
-
-      const client =
-        clients.find(
-          item =>
-            item.id === currentClientId &&
-            item.status === 'active'
-        ) ?? null;
-
-      if (active) {
-        setCurrentClient(client);
-      }
+      assistantLog('stopping TTS before recognition');
+      await Speech.stop();
+      if (!currentAttempt('TTS stop')) return;
+      const available = ExpoSpeechRecognitionModule.isRecognitionAvailable();
+      assistantLog('recognition availability', { available });
+      if (!available) throw new Error('Recognition unavailable');
+      const nativeState = await ExpoSpeechRecognitionModule.getStateAsync();
+      if (!currentAttempt('native state')) return;
+      assistantLog('recognition native state', { state: nativeState });
+      if (nativeState !== 'inactive') throw new Error('Recognition is still stopping');
+      // Installed 57.1.1 supports continuous microphone streaming on Android 13+.
+      // Older Android uses native single-utterance endpointing, without app restart loops.
+      const continuous = Platform.OS === 'android' && Number(Platform.Version) >= 33;
+      const id = voice.begin(continuous);
+      if (id === null) { assistantLog('mic blocked', { reason: 'session already occupied' }); setNotice('A recording is already active. Please wait.'); return; }
+      recognitionEnd.current = { reason: 'native end (endpoint/platform reason not exposed)', startedAt: Date.now(), speechEndObserved: false };
+      assistantLog('starting recognition', { attemptId, language, sessionId: id, continuous, appRecordingTimeout: false });
+      ExpoSpeechRecognitionModule.start({ lang: language, interimResults: true, continuous, maxAlternatives: 1 });
     } catch (error) {
-      console.error(
-        'Floating Assistant client load error:',
-        error
-      );
-
-      if (active) {
-        setCurrentClient(null);
+      assistantLog('mic start failed', { errorType: error instanceof Error ? error.name : typeof error });
+      if (currentAttempt('start failure')) {
+        cancelRecognition('native start failure');
+        // A synchronous start failure may have no terminal native event.
+        voice.discardUnstarted();
+        setOutcome('error');
+        setNotice('Unable to start voice recognition. Check your speech service or use Text Chat.');
+      }
+    } finally {
+      if (micAttempt.current === attemptId && mounted.current) {
+        voiceStarting.current = false;
+        // Keep the preparation indicator until the native start event arrives.
+        if (!voice.current) { setStarting(false); wake(); }
       }
     }
   }
 
-  void loadCurrentClient();
-
-  return () => {
-    active = false;
-  };
-}, []);
- const walkX=useRef(new Animated.Value(0)).current;
- const walkAnimation=useRef<Animated.CompositeAnimation|null>(null);
- const screenWidth=Dimensions.get('window').width;
- const travel=Math.max(0,screenWidth-124);
- const panelWidth=Math.min(310,screenWidth-24);
- const heardSpeech=useRef(false);
- const latestTranscript=useRef('');
- const retryCount=useRef(0);
- const listenTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
-
- function clearListenTimer(){
-  if(listenTimer.current){clearTimeout(listenTimer.current);listenTimer.current=null;}
- }
-
- useSpeechRecognitionEvent('start',()=>{
-  heardSpeech.current=false;
-  setAssistantState('listening');
-  setMessage('🎤 கேட்கிறேன்… பேசுங்க');
- });
- useSpeechRecognitionEvent('result',(event)=>{
-  const text=event.results?.[0]?.transcript?.trim();
-
-  if(text){
-    heardSpeech.current=true;
-    retryCount.current=0;
-    latestTranscript.current=text;
-    setInput(text);
-    setMessage(text);
-  }
-});
- useSpeechRecognitionEvent('end',()=>{
-  clearListenTimer();
-
-  const transcript = latestTranscript.current.trim();
-  latestTranscript.current = '';
-
-  if (transcript) {
-    void send(transcript);
-    return;
-  }
-
-  setAssistantState('idle');
-});
- useSpeechRecognitionEvent('error',(event)=>{
-  clearListenTimer();
-  setAssistantState('idle');
-  if(event.error==='no-speech'){
-   setMessage('குரல் கேட்கவில்லை. 🎤 மீண்டும் பேச Mic-ஐ அழுத்துங்க.');
-   return;
-  }
-  setMessage('Voice listening issue. Mic-ஐ அழுத்தி மீண்டும் முயற்சி செய்யுங்க.');
- });
-
- async function startListening(){
-  try{
-   const permission=await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-   if(!permission.granted){
-    setAssistantState('idle');
-    setMessage('Microphone permission தேவை.');
-    return;
-   }
-   clearListenTimer();
-   heardSpeech.current=false;
-   setAssistantState('listening');
-   setMessage('🎤 கேட்கிறேன்… பேசுங்க');
-   ExpoSpeechRecognitionModule.start({
-    lang:'ta-IN',
-    interimResults:true,
-    continuous:false,
-    maxAlternatives:1,
-   });
-   listenTimer.current=setTimeout(()=>{
-    if(!heardSpeech.current){
-     try{ExpoSpeechRecognitionModule.stop();}catch{}
+  function toggleAssistant() {
+    if (openRef.current) {
+      openRef.current = false;
+      cancelActivity('assistant closed');
+      setOpen(false);
+      setTextMode(false);
+      setOutcome('idle');
+      setMoving(true);
+      wake();
+    } else {
+      openRef.current = true;
+      ++lifecycle.current;
+      setOpen(true);
+      setMoving(false);
+      setOutcome('greeting');
+      setNotice('');
+      setMessage(ASSISTANT_GREETING);
+      wake();
+      void speak(ASSISTANT_GREETING, lifecycle.current);
     }
-   },10000);
-  }catch{
-   setAssistantState('idle');
-   setMessage('Voice listening start ஆகவில்லை.');
   }
- }
 
- const stopWalking=()=>{
-  walkAnimation.current?.stop();
-  walkAnimation.current=null;
-  walkX.stopAnimation();
-  setAssistantState('idle');
- };
+  useEffect(() => {
+    mounted.current = true;
+    const subscription = AppState.addEventListener('change', state => {
+      assistantLog('app state changed', { state, attemptId: micAttempt.current, preparing: voiceStarting.current, hasSession: !!voice.current });
+      const foreground = state === 'active';
+      activeRef.current = foreground;
+      setActive(foreground);
+      if (!foreground) {
+        const interrupted = sending.current;
+        cancelActivity('app ' + state);
+        setMoving(false);
+        if (interrupted) { setOutcome('alert'); setMessage('Request interrupted when the app entered the background. Please try again.'); }
+      } else { wake(); }
+    });
+    wake();
+    return () => {
+      mounted.current = false;
+      openRef.current = false;
+      ++lifecycle.current;
+      ++micAttempt.current;
+      assistantLog('mic attempt cancelled', { reason: 'component unmounted' });
+      ++ttsGeneration.current;
+      request.current?.abort();
+      recognitionEnd.current.reason = 'component unmounted';
+      voice.cancel();
+      clearIdleTimers();
+      try { ExpoSpeechRecognitionModule.abort(); } catch {}
+      void Speech.stop().catch(() => {});
+      subscription.remove();
+    };
+  }, []);
 
- const startWalking=()=>{
-  if(open)return;
-  walkAnimation.current?.stop();
-  setAssistantState('walking');
-
-  const walkLeft=()=>{
-   setFacingLeft(true);
-   const animation=Animated.timing(walkX,{toValue:-travel,duration:6500,useNativeDriver:true});
-   walkAnimation.current=animation;
-   animation.start(({finished})=>{if(finished)walkRight();});
-  };
-
-  const walkRight=()=>{
-   setFacingLeft(false);
-   const animation=Animated.timing(walkX,{toValue:0,duration:6500,useNativeDriver:true});
-   walkAnimation.current=animation;
-   animation.start(({finished})=>{if(finished)walkLeft();});
-  };
-
-  walkX.stopAnimation((value)=>{
-   if(value<=-travel+2)walkRight();
-   else walkLeft();
-  });
- };
-
- useEffect(()=>{
-  const timer=setTimeout(startWalking,500);
-  return()=>{clearTimeout(timer);walkAnimation.current?.stop();};
- },[]);
-
- const pan=useMemo(()=>PanResponder.create({
-  onStartShouldSetPanResponder:()=>false,
-  onMoveShouldSetPanResponder:()=>false,
- }),[]);
-
- async function speakVoicePrompt(){
-  await Speech.stop();
-  setAssistantState('talking');
-  setMessage('என்ன செய்யணும்? சொல்லுங்க');
-
-  try{
-   const voices=await Speech.getAvailableVoicesAsync();
-   const tamilVoice=voices.find(v=>v.language?.toLowerCase()==='ta-in')
-    ?? voices.find(v=>v.language?.toLowerCase().startsWith('ta'));
-
-   const options:Speech.SpeechOptions={
-    language:tamilVoice?.language ?? 'ta-IN',
-    rate:0.85,
-    pitch:1.0,
-    onStart:()=>setAssistantState('talking'),
-    onDone:()=>{
-     setAssistantState('idle');
-     setMessage('ஒரு நிமிஷம்… Mic ready ஆகுது');
-     setTimeout(()=>{void startListening();},650);
-    },
-    onStopped:()=>setAssistantState('idle'),
-    onError:()=>setAssistantState('idle'),
-   };
-
-   if(tamilVoice?.identifier)options.voice=tamilVoice.identifier;
-   Speech.speak('என்ன செய்யணும்? சொல்லுங்க',options);
-  }catch{
-   Speech.speak('What should I do? Tell me',{
-    language:'en-IN',
-    rate:0.9,
-    onDone:()=>setAssistantState('idle'),
-    onError:()=>setAssistantState('idle'),
-   });
-  }
- }
-
- function toggleAssistant(){
-  if(open){
-   Speech.stop();
-   clearListenTimer();
-   try{ExpoSpeechRecognitionModule.abort();}catch{}
-   setOpen(false);
-   setTextMode(false);
-   setMood('happy');
-  }else{
-   stopWalking();
-   setOpen(true);
-   setTextMode(false);
-   setMood('happy');
-   setMessage('என்ன செய்யணும்? சொல்லுங்க');
-   setTimeout(()=>{void speakVoicePrompt();},350);
-  }
- }
-
- useEffect(()=>{
-  if(open){
-   walkAnimation.current?.stop();
-   walkAnimation.current=null;
-   return;
-  }
-  const timer=setTimeout(startWalking,180);
-  return()=>clearTimeout(timer);
- },[open]);
-
- function quick(text:string,next:Mood){
-  setAssistantState('thinking');
-  setMood('thinking');
-  setMessage('Checking…');
-  setTimeout(()=>{
-   setMood(next);
-   setAssistantState('talking');
-   setMessage(text);
-   setTimeout(()=>setAssistantState('idle'),900);
-  },650);
- }
-
- async function send(messageText?: string) {
-  const q = (messageText ?? input).trim();
-
-  if (!q) return;
-
-  setInput('');
-  setAssistantState('thinking');
-  setMood('thinking');
-  setMessage('OneLeadQ AI is thinking...');
-
-  try {
-    const result = await askOneLeadQAgent(
-      q,
-      currentClient
-        ? {
-            name: currentClient.name,
-            businessType: currentClient.businessType,
-            website: currentClient.website,
-            location: currentClient.location,
-            services: currentClient.services,
-            notes: currentClient.notes,
-          }
-        : undefined
-    );
-
-    if (!result.reply) {
-      throw new Error('No AI response');
+  useEffect(() => {
+    if (open || !active || sleeping || !moving || travel === 0) return;
+    let stopped = false;
+    let animation: Animated.CompositeAnimation | null = null;
+    function step(left: boolean) {
+      if (stopped) return;
+      setFacingLeft(left);
+      animation = Animated.timing(walkX, { toValue: left ? -travel : 0, duration: 6500, useNativeDriver: true });
+      animation.start(({ finished }) => { if (finished && !stopped) step(!left); });
     }
+    walkX.stopAnimation(value => step(value > -travel + 2));
+    walkTimer.current = setTimeout(() => setMoving(false), WALK_FOR_MS);
+    return () => { stopped = true; animation?.stop(); walkX.stopAnimation(); if (walkTimer.current) clearTimeout(walkTimer.current); };
+  }, [open, active, sleeping, moving, travel, walkX]);
 
-    setMessage(result.reply);
-    setMood('success');
-    setAssistantState('talking');
+  useImperativeHandle(ref, () => ({ handleScreenTouch() {
+    if (!openRef.current) setMoving(false);
+    wake();
+  } }));
 
-    setTimeout(() => {
-      setAssistantState('idle');
-    }, 1200);
-  } catch (error) {
-    setAssistantState('idle');
-    setMood('alert');
-
-    setMessage(
-      error instanceof Error
-        ? error.message
-        : 'Unable to connect to OneLeadQ AI.'
-    );
+  const reaction = resolveReaction([
+    outcome === 'error' && 'error', outcome === 'alert' && 'alert', (starting || listening) && 'listening',
+    talking && 'talking', busy && pendingReaction,
+    (!sleeping || outcome === 'error' || outcome === 'alert') && outcome,
+    sleeping && 'sleeping',
+    !open && moving && active && 'walking',
+  ]);
+  const ui = reactionVisuals[reaction];
+  function handleMicPress() {
+    assistantLog('mic press', { busy, starting, listening });
+    wake();
+    if (listening) {
+      recognitionEnd.current.reason = 'user stop';
+      assistantLog('stopping recognition', { reason: 'user stop', sessionId: voice.current?.id });
+      setNotice('Finishing recording…');
+      try { ExpoSpeechRecognitionModule.stop(); }
+      catch { cancelRecognition(); setNotice('Unable to stop recording. Please try again.'); }
+    } else {
+      void startListening();
+    }
   }
-}
-
- useImperativeHandle(ref,()=>({
-  handleScreenTouch(){
-   if(open)return;
-   stopWalking();
-   setMood('happy');
-   setMessage("What can I help you with?");
-  }
- }));
-
- const ui=moodUI[mood];
-
- return <View pointerEvents="box-none" style={s.layer}>
-  {open&&<KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':'height'} keyboardVerticalOffset={12} style={s.keyboardLayer} pointerEvents="box-none"><View style={[s.panel,{width:panelWidth}]}>
-   <View style={s.head}><View><Text style={s.title}>OneLeadQ Assistant</Text><Text style={[s.state,{color:ui.accent}]}>{ui.label}</Text></View><Pressable accessibilityLabel="Close assistant" onPress={toggleAssistant} style={s.close}><Ionicons name="close" size={20}/></Pressable></View>
-   <View style={s.reply}><View style={s.replyMascot}><AssistantMascot state={assistantState}/></View><Text style={s.replyText}>{message}</Text></View>
-   {!textMode?<View style={s.voiceBox}>
-    <Pressable accessibilityLabel="Start voice listening" onPress={()=>{void startListening();}} style={[s.bigMic,assistantState==='listening'&&s.bigMicListening]}><Ionicons name={assistantState==='listening'?'mic':'mic-outline'} size={34} color="white"/></Pressable>
-    <Text style={s.voiceTitle}>{assistantState==='listening'?'Listening…':'Voice Chat'}</Text>
-    <Text style={s.voiceHint}>{assistantState==='listening'?'பேசுங்க… உங்கள் குரலை கேட்கிறேன்':'Mic-ஐ அழுத்தி பேசலாம்'}</Text>
-    <Pressable accessibilityLabel="Switch to text chat" onPress={()=>{clearListenTimer();try{ExpoSpeechRecognitionModule.abort();}catch{}setAssistantState('idle');setTextMode(true);}} style={s.keyboardButton}><Ionicons name="keypad-outline" size={20} color="#0B5D4B"/><Text style={s.keyboardText}>Text Chat</Text></Pressable>
-   </View>:<View style={s.textBox}>
-    <View style={s.textModeHead}><Text style={s.textModeTitle}>Text Chat</Text><Pressable accessibilityLabel="Switch to voice chat" onPress={()=>{setTextMode(false);void startListening();}} style={s.voiceSwitch}><Ionicons name="mic-outline" size={20} color="#0B5D4B"/><Text style={s.keyboardText}>Voice</Text></Pressable></View>
-    <View style={s.inputRow}><TextInput autoFocus value={input} onChangeText={setInput}onSubmitEditing={() => {
-  void send();
-}} placeholder="Type your message…" style={s.input}/><Pressable onPress={() => {
-  void send();
-}} style={s.send}><Ionicons name="arrow-up" size={20} color="white"/></Pressable></View>
-   </View>}
-   </View></KeyboardAvoidingView>}
-  <Animated.View pointerEvents="box-none" style={[s.walker,{transform:[{translateX:open?0:walkX}]}]}>
-   <View {...pan.panHandlers}>
-    <Pressable accessibilityLabel="Open OneLeadQ assistant" onPress={toggleAssistant} style={s.bot}>
-     <AssistantMascot state={assistantState} facingLeft={facingLeft}/>
-    </Pressable>
-   </View>
-  </Animated.View>
- </View>
+  const voiceBusy = busy || starting;
+  return <View pointerEvents="box-none" style={s.layer}>
+    {open && <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={12}
+      style={[s.keyboardLayer, { paddingBottom: 212 }]} pointerEvents="box-none">
+      <View onTouchStart={() => assistantLog('panel touch')} style={[s.panel, { width: Math.min(340, width - 24), maxHeight: height * 0.68 }]}>
+        <View style={s.head}><View><Text style={s.title}>OneLeadQ Assistant</Text>
+          <Text style={[s.state, { color: ui.accent }]} accessibilityLiveRegion="polite">{starting ? 'Preparing to listen…' : ui.label}</Text></View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close assistant" onPress={toggleAssistant} style={s.close}><Ionicons name="close" size={20} /></Pressable></View>
+        {!!notice && <Text style={s.voiceHint} accessibilityLiveRegion="polite">{notice}</Text>}
+        <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
+          <View style={s.reply}><View style={s.replyMascot}><AssistantMascot reaction={reaction} active={active} /></View>
+            <Text selectable style={s.replyText}>{message}</Text></View>
+          {!!transcript && <Text selectable style={s.voiceHint}>You said: {transcript}</Text>}
+        </ScrollView>
+        {talking && <Pressable accessibilityRole="button" onPress={stopSpeech} style={s.keyboardButton}><Text style={s.keyboardText}>Stop speaking</Text></Pressable>}
+        {!textMode ? <View style={s.voiceBox}>
+          <Pressable accessibilityRole="button" accessibilityLabel={listening ? 'Finish voice recording' : 'Start voice listening'}
+            accessibilityState={{ busy: voiceBusy }}
+            onLayout={event => { const { x, y, width, height } = event.nativeEvent.layout; assistantLog('mic layout', { x, y, width, height }); }}
+            onPressIn={() => assistantLog('mic press-in')}
+            onPress={handleMicPress}
+            style={({ pressed }) => [s.bigMic, (starting || listening) && s.bigMicListening,
+              pressed && { opacity: 0.65, transform: [{ scale: 0.95 }] }, busy && { opacity: 0.5 }]}>
+            <Ionicons name={listening ? 'stop' : 'mic-outline'} size={34} color="white" /></Pressable>
+          <Text style={s.voiceTitle}>{listening ? 'Listening…' : starting ? 'Preparing to listen…' : busy ? 'Processing…' : 'Voice Chat'}</Text>
+          <Text style={s.voiceHint}>{listening ? 'பேசுங்கள்… முடிக்க Stop-ஐ அழுத்துங்கள்' : 'Mic-ஐ அழுத்திப் பேசலாம்'}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Change recognition language" disabled={listening || voiceBusy}
+            onPress={() => { wake(); setLanguage(v => v === 'ta-IN' ? 'en-IN' : 'ta-IN'); }} style={s.keyboardButton}>
+            <Text style={s.keyboardText}>{language === 'ta-IN' ? 'தமிழ் · Switch to English' : 'English · தமிழுக்கு மாற்று'}</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => { ++lifecycle.current; cancelRecognition('switched to text chat'); stopSpeech(); setTextMode(true); wake(); }}
+            disabled={busy} style={s.keyboardButton}><Text style={s.keyboardText}>Text Chat</Text></Pressable>
+        </View> : <View style={s.textBox}>
+          <View style={s.textModeHead}><Text style={s.textModeTitle}>Text Chat</Text>
+            <Pressable accessibilityRole="button" disabled={busy} onPress={() => { setTextMode(false); wake(); }} style={s.voiceSwitch}><Text style={s.keyboardText}>Voice</Text></Pressable></View>
+          <View style={s.inputRow}><TextInput value={input} editable={!busy} onChangeText={text => { setInput(text); wake(); }}
+            onSubmitEditing={() => void send()} accessibilityLabel="Message OneLeadQ assistant" placeholder="Type your message…" style={s.input} />
+            <Pressable accessibilityRole="button" accessibilityLabel="Send message" disabled={busy || !input.trim()}
+              onPress={() => void send()} style={[s.send, (busy || !input.trim()) && { opacity: 0.5 }]}><Ionicons name="arrow-up" size={20} color="white" /></Pressable></View>
+        </View>}
+      </View>
+    </KeyboardAvoidingView>}
+    <Animated.View pointerEvents="box-none" style={[s.walker, { transform: [{ translateX: open ? 0 : walkX }] }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={open ? 'Close OneLeadQ assistant' : 'Open OneLeadQ assistant'} onPress={toggleAssistant} style={s.bot}>
+        <AssistantMascot reaction={reaction} active={active} facingLeft={!open && facingLeft} />
+      </Pressable>
+    </Animated.View>
+  </View>;
 });
-
 export default FloatingAssistant;
 
 const s=StyleSheet.create({
  layer:{position:'absolute',top:0,right:0,bottom:0,left:0,zIndex:999,elevation:30,pointerEvents:'box-none'},
- walker:{position:'absolute',right:12,bottom:82,alignItems:'flex-end'},
+ walker:{zIndex:1,position:'absolute',right:12,bottom:82,alignItems:'flex-end'},
  bot:{width:100,height:122,alignItems:'center',justifyContent:'flex-end',shadowColor:'#000',shadowOpacity:.16,shadowRadius:8,shadowOffset:{width:0,height:4}},
  mascotViewport:{width:'100%',height:'100%',overflow:'hidden',alignItems:'center',justifyContent:'flex-end'},
  mascot:{width:'100%',height:'100%'},
- keyboardLayer:{position:'absolute',top:0,right:0,bottom:0,left:0,justifyContent:'flex-end',alignItems:'flex-end',paddingRight:12,paddingBottom:212},
- panel:{backgroundColor:'#FFFDF8',borderRadius:22,padding:14,borderWidth:1,borderColor:'#E5D8A8',shadowColor:'#000',shadowOpacity:.18,shadowRadius:12,shadowOffset:{width:0,height:5},elevation:24},
+ keyboardLayer:{zIndex:2,position:'absolute',top:0,right:0,bottom:0,left:0,justifyContent:'flex-end',alignItems:'flex-end',paddingRight:12,paddingBottom:212},
+ panel:{flexShrink:1,backgroundColor:'#FFFDF8',borderRadius:22,padding:14,borderWidth:1,borderColor:'#E5D8A8',shadowColor:'#000',shadowOpacity:.18,shadowRadius:12,shadowOffset:{width:0,height:5},elevation:24},
  head:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},
  title:{fontSize:16,fontWeight:'900',color:'#0B5D4B'},
  state:{fontSize:11,fontWeight:'800',marginTop:2},
