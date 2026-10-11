@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRef } from 'react';
 import { View } from 'react-native';
 import AssistantHost from '../src/components/AssistantHost';
+import { getWebDevelopmentSessionToken } from '../src/services/webDevelopmentSession';
 import type { FloatingAssistantHandle } from '../src/components/FloatingAssistant';
 
 export default function RootLayout() {
@@ -11,7 +12,10 @@ export default function RootLayout() {
     <View style={{ flex: 1 }} onTouchStart={() => assistant.current?.handleScreenTouch()}>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }} />
-      <AssistantHost ref={assistant} />
+      <AssistantHost
+          ref={assistant}
+          getWebDevelopmentSessionToken={getWebDevelopmentSessionToken}
+      />
     </View>
   );
 }

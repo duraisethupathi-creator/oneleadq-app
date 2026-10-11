@@ -8,6 +8,7 @@ import { loadClients, loadCurrentClientId } from '../storage/clientStorage';
 import { AssistantReaction, reactionVisuals, readableReply, requestReaction, resolveReaction, responseReaction } from '../assistant/reactions';
 import { VoiceSession } from '../assistant/VoiceSession';
 import { ASSISTANT_GREETING, getAssistantSpeechOptions } from '../assistant/speechVoice';
+import WebDevelopmentPanel, { type WebSessionTokenProvider } from './WebDevelopmentPanel';
 
 const SLEEP_AFTER_MS = 60000;
 const WALK_FOR_MS = 15000;
@@ -34,8 +35,11 @@ const AssistantMascot = memo(function AssistantMascot({ reaction, facingLeft = f
 });
 
 export type FloatingAssistantHandle = { handleScreenTouch: () => void };
-const FloatingAssistant = forwardRef<FloatingAssistantHandle>(function FloatingAssistant(_, ref) {
+export type FloatingAssistantProps = { getWebDevelopmentSessionToken?: WebSessionTokenProvider };
+const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantProps>(function FloatingAssistant({ getWebDevelopmentSessionToken }, ref) {
   const [open, setOpen] = useState(false);
+  const [webMode, setWebMode] = useState(false);
+  const webModeRef = useRef(false);
   const [textMode, setTextMode] = useState(false);
   const [input, setInput] = useState('');
   const [transcript, setTranscript] = useState('');
@@ -144,6 +148,7 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle>(function FloatingA
   }
 
   async function send(value = input) {
+    if (webModeRef.current) return;
     const q = value.trim();
     if (!q || sending.current || voiceStarting.current || voice.current || !openRef.current || !activeRef.current) return;
     // Set synchronously before any await; renders cannot protect against repeated events.
@@ -359,6 +364,8 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle>(function FloatingA
       openRef.current = false;
       cancelActivity('assistant closed');
       setOpen(false);
+      webModeRef.current = false;
+      setWebMode(false);
       setTextMode(false);
       setOutcome('idle');
       setMoving(true);
@@ -458,11 +465,19 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle>(function FloatingA
           <Text style={[s.state, { color: ui.accent }]} accessibilityLiveRegion="polite">{starting ? 'Preparing to listen…' : ui.label}</Text></View>
           <Pressable accessibilityRole="button" accessibilityLabel="Close assistant" onPress={toggleAssistant} style={s.close}><Ionicons name="close" size={20} /></Pressable></View>
         {!!notice && <Text style={s.voiceHint} accessibilityLiveRegion="polite">{notice}</Text>}
+        <Pressable accessibilityRole="button" accessibilityLabel={webMode ? 'Return to normal assistant chat' : 'Enter Web Development mode'}
+          onPress={() => {
+            cancelActivity('assistant mode changed');
+            webModeRef.current = !webModeRef.current;
+            setWebMode(webModeRef.current);
+            setNotice(''); setOutcome('idle'); wake();
+          }} style={s.keyboardButton}><Text style={s.keyboardText}>{webMode ? 'Back to normal chat' : 'Web Development'}</Text></Pressable>
         <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
-          <View style={s.reply}><View style={s.replyMascot}><AssistantMascot reaction={reaction} active={active} /></View>
+          {webMode ? <WebDevelopmentPanel active={active} getSessionToken={getWebDevelopmentSessionToken} /> : <><View style={s.reply}><View style={s.replyMascot}><AssistantMascot reaction={reaction} active={active} /></View>
             <Text selectable style={s.replyText}>{message}</Text></View>
-          {!!transcript && <Text selectable style={s.voiceHint}>You said: {transcript}</Text>}
+          {!!transcript && <Text selectable style={s.voiceHint}>You said: {transcript}</Text>}</>}
         </ScrollView>
+        {!webMode && <>
         {talking && <Pressable accessibilityRole="button" onPress={stopSpeech} style={s.keyboardButton}><Text style={s.keyboardText}>Stop speaking</Text></Pressable>}
         {!textMode ? <View style={s.voiceBox}>
           <Pressable accessibilityRole="button" accessibilityLabel={listening ? 'Finish voice recording' : 'Start voice listening'}
@@ -488,6 +503,7 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle>(function FloatingA
             <Pressable accessibilityRole="button" accessibilityLabel="Send message" disabled={busy || !input.trim()}
               onPress={() => void send()} style={[s.send, (busy || !input.trim()) && { opacity: 0.5 }]}><Ionicons name="arrow-up" size={20} color="white" /></Pressable></View>
         </View>}
+        </>}
       </View>
     </KeyboardAvoidingView>}
     <Animated.View pointerEvents="box-none" style={[s.walker, { transform: [{ translateX: open ? 0 : walkX }] }]}>
