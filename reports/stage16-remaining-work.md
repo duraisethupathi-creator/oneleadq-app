@@ -1,13 +1,15 @@
-# Stage 16 remaining work — 2026-10-15
+# Stage 16 remaining work — continuation on 2026-10-15
 
-| Test | Status | Actual result / root cause | Fix applied | Retest | Remaining work |
+Stage 16 is ready for human review of the preapproval workflow, but not ready to mark fully complete or release.
+
+| Test | Status | Actual result / root cause | Fix applied | Retest result | Remaining work |
 |---|---|---|---|---|---|
-| Restore device and native regression | BLOCKED | Phone offline | Dynamic runner ready | Offline branch verified | 30–60 min once wireless debugging is restored |
-| Complete scrolling/client workspace automation | BLOCKED | Runner covers visible tabs; client selection intentionally not persisted, offscreen input marked blocked | Dynamic selectors/evidence helpers supplied | Connected run pending | 1–2 h; preserve/restore selected fixture context |
-| Authenticated Stage 16 website journey | BLOCKED | No usable fixture session established in this audit | Backend mocked gates validated | 59 backend tests pass | 2–4 h after fixture/session setup; stop before approval/publication |
-| Native assistant clearance | BLOCKED | New padding not visually accepted | 190px bottom clearance | Typecheck passed | 30–60 min with generated reply and keyboard |
-| Live Gemini request, timeout/retry UX | BLOCKED | Health HTTP alone does not prove provider inference; no live paid request made | Existing mocked abort/error/health tests pass | Native retry interaction pending | 1–2 h with configured fixture/provider access |
-| Responsive preview and Tamil/English acceptance | BLOCKED | Label improved; generated pages not visually reviewed | Existing variant fixtures retained | Structural tests pass | 1–2 h at phone/desktop widths |
-| CI workflow | BLOCKED | No local GitHub Actions configuration | Local checks completed | Remote execution not attempted | 30–60 min after agreed CI scope |
+| Human design approval | BLOCKED | Third variant selected on phone; no designLock or authority granted | Explicit approval controls preserved | Unapproved architecture/plan blocked HTTP 409 | Owner reviews a variant and approves when ready; waiting time unknown |
+| Full website generation / acceptance | BLOCKED | Current evidence covers design representations, not an approved generated website | No gate bypass | Responsive design previews pass at 390/1280px | After approval: 1–2 h for architecture, proposed files, approved test-workspace generation and final-site checks; separate file approvals required |
+| Live Gemini inference | BLOCKED | Deterministic routing and design generation tested; paid inference omitted | Existing backend retained | Health/mocks only | Optional bounded inference and failure recovery acceptance, 15–30 min |
+| Clean checkout / prior work integration | BLOCKED | Existing modified/untracked app and backend files are needed by current working tree and were preserved | Commit only this continuation's changes | TypeScript/native checks passed on working tree | Review/integrate earlier changes and rerun relevant checks from clean checkout, 1–2 h |
+| CI execution | BLOCKED | No local GitHub Actions configuration; no remote workflow run | Local targeted checks completed | Local evidence only | Identify/add agreed CI checks, 30–60 min |
+| Additional device/orientation accessibility | BLOCKED | Dock checked on connected I2127 portrait device | 56dp accessible target and separate 72dp space | Native AI response/buttons and preview controls clear | Rotation, smaller screens, large text, 30–60 min |
+| Navigation runner full workflow coverage | BLOCKED | Native navigation script intentionally leaves provider submission and authenticated website journey to separate tests | Added reusable fixture backend test and recorded native interaction | Separate route, pairing, resume, preview and selection evidence passes | Integrate opt-in native fixture submission/pairing automation if required, 1–2 h |
 
-Estimates exclude waiting for phone/session availability. No human approval, publishing, deployment, external messaging, client deletion or production configuration changes were performed. The full mission remains partially complete; blocked rows must not be interpreted as passed.
+Device connection is recovered; it is no longer a blocker. Do not treat protected postapproval steps as application failures. No approval, publication, deployment, merge or real customer edit was performed. Keep screenshot/XML evidence local because it may contain client details. Estimates exclude waiting for approval or service availability.

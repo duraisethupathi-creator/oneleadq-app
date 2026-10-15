@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useRef } from 'react';
 import { View } from 'react-native';
+import { colors } from '../src/theme';
 import AssistantHost from '../src/components/AssistantHost';
 import { getWebDevelopmentSessionToken } from '../src/services/webDevelopmentSession';
 import type { FloatingAssistantHandle } from '../src/components/FloatingAssistant';
@@ -9,10 +10,14 @@ import type { FloatingAssistantHandle } from '../src/components/FloatingAssistan
 export default function RootLayout() {
   const assistant = useRef<FloatingAssistantHandle>(null);
   return (
-    <View style={{ flex: 1 }} onTouchStart={() => assistant.current?.handleScreenTouch()}>
+    <View style={{ flex: 1, backgroundColor: colors.cream }} onTouchStart={() => assistant.current?.handleScreenTouch()}>
       <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false }} />
+      {/* Reserve space for the assistant instead of placing its touch target over page actions. */}
+      <View style={{ flex: 1, marginBottom: 72 }}>
+        <Stack screenOptions={{ headerShown: false }} />
+      </View>
       <AssistantHost
+          compactDock
           ref={assistant}
           getWebDevelopmentSessionToken={getWebDevelopmentSessionToken}
       />

@@ -1,11 +1,14 @@
-# Stage 16 bugs — 2026-10-15
+# Stage 16 bugs — continuation on 2026-10-15
 
-| Test | Status | Actual result / root cause | Fix applied | Retest | Remaining work |
+| Test | Status | Actual result / root cause | Fix applied | Retest result | Remaining work |
 |---|---|---|---|---|---|
-| AI client context | PASS | AI tab omitted currentClient.id; website handoff may lose identity although catalogue is present | Include selected client ID | Mocked component button invocation asserts ID and fixture services | Native integration acceptance |
-| Task action on error | PASS | Error text shares reply state and previously exposed Add to Tasks with any selected client | Require successful agent response before showing action | Mocked render hides action on error, shows on success | Native acceptance |
-| Floating overlap clearance | BLOCKED | Global assistant overlays content; insufficient scroll-end padding | Increase AI scroll padding 40 to 190 | TypeScript passes; phone went offline | Visual response/action/keyboard acceptance |
-| Coordinate-bound Android runner | PASS | Original script hard-coded phone address and taps, with no evidence output | Authorized-device discovery, bounds-derived selectors, screenshots/XML, JSON results, explicit BLOCKED, safe crash-signature count | Parser executes and offline-device branch returns BLOCKED | Exercise connected-device selectors and scroll coverage |
-| Wireless ADB | BLOCKED | Phone transport changed from device to offline during audit | Attempted adb reconnect offline | Still unavailable | Restore network/debug authorization |
+| Fixed wireless address | PASS | Saved port stale; original runner did not discover mDNS connection services | Added discovery helper, explicit serial validation and pairing-port exclusion | Focused fake-ADB cases and real phone discovery pass | Re-pair physically if authorization expires |
+| PowerShell ADB invocation / stderr | PASS | Argument binding was implicit and successful monkey diagnostics on stderr terminated execution under Stop | Named Arguments array; check native exit code while allowing diagnostic stderr | Existing app launch and native navigation pass | None observed |
+| AI health false failures | PASS | Tab retained response scroll; initial swipe began in status-bar region | Swipe from 25% to 75% of scroll bounds; scroll before checking; added AIOnly retest option | Final AI-only health and online checks pass | Longer/other screen paths may need scrolling adjustments |
+| Missing AI-tab website entry | PASS | Successful handoff only rendered reply text; ignored handoff payload | Store matching-client handoff, open existing WebDevelopmentPanel in closable modal; clear on blur/new request | Focused mock tests modal mounting and client isolation; native opens correct fixture panel and pairs/resumes | Postapproval generation untested |
+| Assistant covers actions | PASS | Absolute 100x122dp walking mascot sat over Home and AI controls; padding alone did not protect all screens | Optional 56dp compact dock; reserve 72dp beneath root navigation | Zero intersections for 6 native visible controls; response/task screenshot clear; Home screenshot acceptance recorded separately | Additional devices/orientations |
+| Dashboard wrong current client | PASS | Literal Current client · Catchy Decors ignored storage selection | Load selected active client on focus and show explicit missing/error fallback | Focused client-switch regression and native Home fixture-label check | None for tested path |
+| Bridge unavailable | PASS | Authenticated fixture creation initially HTTP 503; local Bridge port 3010 was down | Started existing server hidden with existing configuration | Fixture create, three variants, measured previews and approval guards pass | Keep local Bridge running for future work |
+| Client ID / error-task fixes from af682b7 | PASS | Earlier omission/error action fixed in baseline | Retained baseline changes | Expanded AI-tab regression passes | None for mocked behavior |
 
-Verified fixes refer to mocked component behavior, not completed native acceptance. Existing unrelated local modifications remain uncommitted and unchanged by this work.
+Native selection, previews and approval warning were observed directly; provider inference and postapproval file generation remain explicitly unverified. All pre-existing unrelated changes remain outside the new commits. Only the dock delta is staged for FloatingAssistant.tsx, preserving its prior local modifications.

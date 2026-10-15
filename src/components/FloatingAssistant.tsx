@@ -35,8 +35,8 @@ const AssistantMascot = memo(function AssistantMascot({ reaction, facingLeft = f
 });
 
 export type FloatingAssistantHandle = { handleScreenTouch: () => void };
-export type FloatingAssistantProps = { getWebDevelopmentSessionToken?: WebSessionTokenProvider };
-const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantProps>(function FloatingAssistant({ getWebDevelopmentSessionToken }, ref) {
+export type FloatingAssistantProps = { getWebDevelopmentSessionToken?: WebSessionTokenProvider; compactDock?: boolean };
+const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantProps>(function FloatingAssistant({ getWebDevelopmentSessionToken, compactDock = false }, ref) {
   const [open, setOpen] = useState(false);
   const [webMode, setWebMode] = useState(false);
   const webModeRef = useRef(false);
@@ -57,7 +57,7 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
   const [active, setActive] = useState(AppState.currentState === 'active');
   const [facingLeft, setFacingLeft] = useState(true);
   const { width, height } = useWindowDimensions();
-  const travel = Math.max(0, width - 124);
+  const travel = Math.max(0, width - (compactDock ? 80 : 124));
   const walkX = useRef(new Animated.Value(0)).current;
   const mounted = useRef(true);
   const openRef = useRef(false);
@@ -506,8 +506,8 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
         </>}
       </View>
     </KeyboardAvoidingView>}
-    <Animated.View pointerEvents="box-none" style={[s.walker, { transform: [{ translateX: open ? 0 : walkX }] }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel={open ? 'Close OneLeadQ assistant' : 'Open OneLeadQ assistant'} onPress={toggleAssistant} style={s.bot}>
+    <Animated.View pointerEvents="box-none" style={[s.walker, compactDock && { bottom: 8 }, { transform: [{ translateX: open ? 0 : walkX }] }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={open ? 'Close OneLeadQ assistant' : 'Open OneLeadQ assistant'} onPress={toggleAssistant} style={[s.bot, compactDock && { width: 56, height: 56 }]}>
         <AssistantMascot reaction={reaction} active={active} facingLeft={!open && facingLeft} />
       </Pressable>
     </Animated.View>

@@ -13,6 +13,7 @@ import { loadTasks } from "../../src/storage/taskStorage";
 import { loadSEOIssues } from "../../src/storage/seoStorage";
 import { loadLeads } from "../../src/storage/leadStorage";
 import { colors } from "../../src/theme";
+import { loadClients, loadCurrentClientId } from "../../src/storage/clientStorage";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function Dashboard() {
   const [scheduled, setScheduled] = useState(0);
   const [seoIssues, setSeoIssues] = useState(0);
   const [openLeads, setOpenLeads] = useState(0);
+  const [currentClientName, setCurrentClientName] = useState("No client selected");
 
   useFocusEffect(
     useCallback(() => {
@@ -32,10 +34,13 @@ export default function Dashboard() {
         loadContent(),
         loadSEOIssues(),
         loadLeads(),
+        loadClients(),
+        loadCurrentClientId(),
       ])
-        .then(([tasks, content, seo, leads]) => {
+        .then(([tasks, content, seo, leads, clients, currentClientId]) => {
           if (!active) return;
 
+          setCurrentClientName(clients.find(client => client.id === currentClientId && client.status === "active")?.name || "No client selected");
           const today = new Date().toISOString().slice(0, 10);
 
           setTodayTasks(
@@ -70,7 +75,7 @@ export default function Dashboard() {
             ).length
           );
         })
-        .catch(() => {});
+        .catch(() => { if (active) setCurrentClientName("Client unavailable"); });
 
       return () => {
         active = false;
@@ -126,7 +131,7 @@ export default function Dashboard() {
         </Text>
 
         <Text style={s.sub}>
-          Current client · Catchy Decors
+          Current client · {currentClientName}
         </Text>
       </View>
 

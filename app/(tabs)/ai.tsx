@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -28,6 +29,8 @@ import {
 } from "../../src/services/aiAgent";
 
 import { colors } from "../../src/theme";
+import WebDevelopmentPanel from "../../src/components/WebDevelopmentPanel";
+import { getWebDevelopmentSessionToken } from "../../src/services/webDevelopmentSession";
 
 // Clean Gemini Markdown response
 // Clean Gemini Markdown response
@@ -187,6 +190,9 @@ export default function AI() {
   >(null);
 
   const [loading, setLoading] = useState(false);
+  const [webHandoff, setWebHandoff] = useState<{clientId:string;mode:"CREATE_NEW"|"UPGRADE_EXISTING";intent:string;nonce:number}>();
+  const [webOpen, setWebOpen] = useState(false);
+  useFocusEffect(useCallback(() => () => setWebOpen(false), []));
 
   const checkConnection = async () => {
     setLoading(true);
@@ -211,6 +217,8 @@ export default function AI() {
 
     setLoading(true);
 
+    setWebHandoff(undefined);
+    setWebOpen(false);
     setReply("");
     setAgent("");
     setModel("");
@@ -230,6 +238,9 @@ export default function AI() {
       }
     : undefined
 );
+      if (result.handoff?.kind === "web-development" && result.handoff.clientId === currentClient?.id) {
+        setWebHandoff({clientId:currentClient.id,mode:result.handoff.mode,intent:result.handoff.intent,nonce:Date.now()});
+      }
       setConnected(true);
 
       setAgent(
@@ -539,6 +550,11 @@ approval: smartDetails.approval,
             <Text style={s.reply}>
               {formatAIResponse(reply)}
             </Text>
+            {webHandoff && webHandoff.clientId === currentClient?.id && (
+              <Pressable accessibilityRole="button" accessibilityLabel="Open Website Development workspace" style={s.addTaskButton} onPress={() => setWebOpen(true)}>
+                <Text style={s.addTaskButtonText}>OPEN WEBSITE WORKSPACE / இணையதளம்</Text>
+              </Pressable>
+            )}
             {currentClient && agent && (
   <Pressable
     style={s.addTaskButton}
@@ -552,6 +568,14 @@ approval: smartDetails.approval,
           </View>
         )}
       </ScrollView>
+      <Modal visible={webOpen && webHandoff?.clientId === currentClient?.id} animationType="slide" onRequestClose={() => setWebOpen(false)}>
+        <View style={{flex:1,backgroundColor:colors.cream,paddingTop:48,paddingHorizontal:16}}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close Website Development workspace" onPress={() => setWebOpen(false)} style={s.askButton}><Text style={s.askButtonText}>CLOSE / மூடு</Text></Pressable>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{paddingVertical:16,paddingBottom:48}}>
+            {webOpen && webHandoff?.clientId === currentClient?.id && <WebDevelopmentPanel active={webOpen} handoff={webHandoff} getSessionToken={getWebDevelopmentSessionToken} />}
+          </ScrollView>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
