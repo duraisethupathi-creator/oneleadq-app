@@ -9,10 +9,13 @@ const flush = async () => {
   }
 };
 
-function harness(authenticated = true) {
+function harness(authenticated = true, persisted = null) {
+  const draftExports={};
+  if(persisted)vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/storage/webDevelopmentDraft.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:draftExports,require:()=>({__esModule:true,default:{getItem:async key=>persisted.get(key)||null,setItem:async(key,value)=>persisted.set(key,value)}})});
   let cursor = 0;
   let selectedClient = 'stable-client';
   let active = true;
+  let command;let commandSequence=0;let incomingHandoff;
   let deferred;
 
   const slots = [];
@@ -89,16 +92,19 @@ function harness(authenticated = true) {
   };
 
   class Agent {
-    async create(clientId, projectId, signal) {
+    async create(clientId, projectId, signal, options = {}) {
       calls.push({
         action: 'create',
         clientId,
         projectId,
         signal,
+        options,
       });
 
       workflow.context.clientId = clientId;
       workflow.context.projectId = projectId;
+      workflow.mode = options.mode || 'UPGRADE_EXISTING';
+      if (workflow.mode === 'CREATE_NEW') workflow.state = 'REQUIREMENTS_READY';
 
       return structuredClone(workflow);
     }
@@ -144,6 +150,8 @@ function harness(authenticated = true) {
           },
         ];
       }
+      if (action === 'architecture') { workflow.state = 'ARCHITECTURE_READY'; workflow.architecture = { framework: 'STATIC_HTML', pages: ['home'] }; }
+      if (action === 'reject-files') workflow.approvals[0].rejected = true;
 
       if (action === 'propose-files') {
         workflow.state = 'WAITING_FOR_FILE_APPROVAL';
@@ -174,6 +182,9 @@ function harness(authenticated = true) {
         workflow.state = 'COMMITTED';
       }
 
+      if(action==='generate-designs'){workflow.designVariants=[1,2,3].map(i=>({id:'design-'+i,name:'Variant '+i,spec:{layout:['split','poster','stacked'][i-1],primary:'#155e54',accent:'#e9bd73',background:'#fff',ink:'#123',cta:'Enquire',sections:['Services','Contact'],typography:'Sans',cards:'outline',mobile:'stack',style:'Modern'}}));workflow.state='DESIGN_VARIANTS_READY';}
+      if(action==='select-design')workflow.selectedDesignId=input.variantId;
+      if(action==='approve-design'){workflow.designLock={state:'APPROVED',selectedVariantId:input.variantId};workflow.state='DESIGN_LOCKED';}
       if (action === 'propose-push') {
         workflow.state = 'WAITING_FOR_PUSH_APPROVAL';
         workflow.pushApprovalId = 'push-1';
@@ -249,6 +260,7 @@ function harness(authenticated = true) {
     Error,
 
     require(name) {
+      if (name === './webDevelopmentWebsiteTypes') {const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/components/webDevelopmentWebsiteTypes.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports});return exports;}
       if (name === 'react') {
         return react;
       }
@@ -269,6 +281,7 @@ function harness(authenticated = true) {
 
       if (name === 'react-native') {
         return {
+          Platform:{OS:'web'},Share:{share:async()=>{}},
           Pressable: 'Pressable',
           Text: 'Text',
           TextInput: 'TextInput',
@@ -280,6 +293,7 @@ function harness(authenticated = true) {
         };
       }
 
+      if(name.endsWith('/webDevelopmentDraft'))return persisted?draftExports:{loadWebDraft:async()=>null,saveWebDraft:async()=>{},parseDesignDraft:()=>({}),saveNewWebForm:async()=>{},opensNewWebForm:async()=>false};
       if (name.endsWith('/webDevelopmentAgent')) {
         return {
           WebDevelopmentAgent: Agent,
@@ -293,6 +307,7 @@ function harness(authenticated = true) {
       if (name.endsWith('/clientStorage')) {
         return {
           loadCurrentClientId: async () => selectedClient,
+          saveCurrentClientId: async id => { selectedClient = id; },
 
           loadClients: async () => [
             {
@@ -317,7 +332,7 @@ function harness(authenticated = true) {
     cursor = 0;
 
     const tree = exports.default({
-      active,
+      active,command,handoff:incomingHandoff,onCommandConsumed:()=>{command=undefined;},
       getSessionToken: authenticated
         ? async () => sessionToken
         : undefined,
@@ -355,6 +370,8 @@ function harness(authenticated = true) {
 
   return {
     calls,
+    handoff(value){incomingHandoff=value;render();},
+    command(text,clientId=selectedClient){command={text,clientId,nonce:++commandSequence};render();},
     find,
     render,
 
@@ -423,6 +440,7 @@ async function main() {
 
   off.render();
   await flush();
+  off.render();await flush();
 
   off.input(
     'Configured Web Development project ID',
@@ -440,6 +458,7 @@ async function main() {
 
   h.render();
   await flush();
+  h.render();await flush();
 
   assert.equal(
     h.find('Create workflow').props.disabled,
@@ -579,6 +598,7 @@ async function main() {
 
   changed.render();
   await flush();
+  changed.render();await flush();
 
   changed.input(
     'Configured Web Development project ID',
@@ -601,6 +621,7 @@ async function main() {
 
   cancelled.render();
   await flush();
+  cancelled.render();await flush();
 
   cancelled.input(
     'Configured Web Development project ID',
@@ -634,6 +655,52 @@ async function main() {
     'cancelled operation requires refresh',
   );
 
+  const creation = harness(); creation.render(); await flush();
+  creation.render();await flush();
+  creation.render();await flush();
+  creation.render();await flush();
+  creation.input('Configured Web Development project ID', 'explicit-project');
+  await creation.tap('CREATE_NEW');
+  assert.equal(creation.find('Create workflow').props.disabled, true);
+  creation.input('Website requirements and real page content', 'Actual client-approved requirements.');
+  await creation.tap('Select STATIC_HTML creation framework');
+  assert.equal(creation.find('Create workflow').props.disabled,true,'website type requires explicit selection');
+  await creation.tap('Interior Design / Home Decor');
+  await creation.tap('Create workflow');
+  assert.equal(creation.calls[0].options.mode, 'CREATE_NEW');
+  assert.equal(creation.calls[0].options.requirements.websiteType,'INTERIOR');
+  assert.equal(creation.calls[0].options.requirements.businessName, 'Client');
+  await creation.tap('Analyze project');
+  assert.equal(creation.find('Prepare change plan'), undefined);
+  await creation.tap('Generate 3 UI variants');
+  await creation.tap('Select design-2');
+  await creation.tap('Approve Design');
+  await creation.tap('Prepare architecture proposal');
+  await creation.tap('Prepare change plan');
+  await creation.tap('Propose file approvals (no writes)');
+  creation.check(); await creation.tap('Reject selected changes');
+  assert.ok(!creation.calls.some(call => call.action === 'approve-files'));
+  const transfer=harness();transfer.render();await flush();transfer.render();await flush();
+  transfer.handoff({clientId:'stable-client',mode:'CREATE_NEW',intent:'create',nonce:1,websiteType:'BUSINESS'});await flush();transfer.render();assert.equal(transfer.calls.length,0,'handoff never creates workflow or analyzes automatically');
+  assert.ok(transfer.find('CREATE_NEW '+String.fromCharCode(183)+' selected'),'handoff selects requested mode after draft hydration');
+  assert.ok(transfer.find('Selected: Business / Corporate'),'launcher website selection reaches existing setup without creating a workflow');
+  transfer.handoff({clientId:'other-client',mode:'UPGRADE_EXISTING',intent:'upgrade',nonce:2});await flush();transfer.render();assert.ok(transfer.find('CREATE_NEW '+String.fromCharCode(183)+' selected'),'other client handoff cannot change mode');
+  const spoken=harness();spoken.render();await flush();spoken.render();await flush();
+  spoken.command('Changes apply pannu');await flush();assert.equal(spoken.calls.length,0,'voice cannot apply changes');
+  spoken.command('New website create pannu');await flush();
+  spoken.input('Configured Web Development project ID','explicit-project');spoken.input('Website requirements and real page content','Verified requirements.');
+  await spoken.tap('Select STATIC_HTML creation framework');await spoken.tap('Interior Design / Home Decor');await spoken.tap('Create workflow');await spoken.tap('Generate 3 UI variants');
+  spoken.command('Second design blue theme la refine pannu');await flush();spoken.render();
+  assert.equal(spoken.calls.find(c=>c.action==='select-design').input.variantId,'design-2');
+  assert.equal(spoken.find('Refine Design instruction').props.value,'Second design blue theme la refine pannu');
+  spoken.command('Design approve');await flush();assert.ok(!spoken.calls.some(c=>c.action==='approve-design'),'voice opens review, never approves');
+  const persisted=new Map();const fresh=harness(true,persisted);fresh.render();await flush();fresh.render();await flush();
+  fresh.input('Configured Web Development project ID','stage16-test-site');fresh.input('Website requirements and real page content','Reusable verified requirements');await fresh.tap('Create workflow');
+  const callCount=fresh.calls.length;await fresh.tap('Start new workflow');assert.equal(fresh.calls.length,callCount,'start-new performs no backend operation');assert.ok(fresh.find('Create workflow'));assert.equal(fresh.find('Configured Web Development project ID').props.value,'');assert.equal(fresh.find('Existing Web Development workflow ID').props.value,'');assert.equal(fresh.find('Website requirements and real page content').props.value,'Reusable verified requirements');
+  const oldDraft=JSON.parse(persisted.get('oneleadq:web-draft:v1:stable-client'));assert.equal(oldDraft.workflowId,'run-1');assert.equal(oldDraft.projectId,'stage16-test-site','original saved draft remains intact');
+  const reopened=harness(true,persisted);reopened.render();await flush();reopened.render();await flush();assert.ok(reopened.find('Create workflow'),'reopening stays on form');assert.equal(reopened.calls.length,0);assert.equal(reopened.find('Configured Web Development project ID').props.value,'');assert.equal(reopened.find('Existing Web Development workflow ID').props.value,'');await reopened.tap('Resume existing workflow');assert.equal(reopened.find('Existing Web Development workflow ID').props.value,'run-1');await reopened.tap('Resume workflow');assert.ok(reopened.find('Start new workflow'),'old workflow remains explicitly resumable');
+  await reopened.tap('Start new workflow');reopened.input('Configured Web Development project ID','stage16-create-test');await reopened.tap('Create workflow');assert.equal(reopened.calls.at(-1).projectId,'stage16-create-test');assert.equal(reopened.calls.at(-1).clientId,'stable-client');
+  const beforeOtherClient=spoken.calls.length;spoken.command('3 design kaatu','other-client');await flush();assert.equal(spoken.calls.length,beforeOtherClient,'commands are isolated by stable client ID');
   console.log(
     'PASS: Web panel explicit client/project, session authentication, file/commit/push confirmations, validation selection, client switch and background abort',
   );

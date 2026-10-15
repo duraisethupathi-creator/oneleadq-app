@@ -1,14 +1,16 @@
 // Public connection address only; provider credentials stay on the backend.
 const AI_AGENT_URL = process.env.EXPO_PUBLIC_AI_AGENT_URL?.trim().replace(/\/$/, '') || 'http://192.168.1.2:3001';
-const AI_REQUEST_TIMEOUT = 15000;
+const AI_REQUEST_TIMEOUT = 120000;
 const HEALTH_TIMEOUT = 5000;
 export type AIClientContext = {
+  id?: string;
   name: string; businessType?: string; website?: string; location?: string;
-  services?: string[]; notes?: string;
+  services?: string[]; oneLeadQServices?: string[]; productsServices?: string[]; phone?: string; email?: string; notes?: string;
 };
 export type AIAgentResponse = {
   ok: boolean; provider?: string; model?: string; agent?: string; agentId?: string;
-  reply?: string; error?: string;
+  reply?: string; error?: string; grounded?: boolean;
+  handoff?: {kind:'web-development';mode:'CREATE_NEW'|'UPGRADE_EXISTING';intent:'create'|'upgrade'|'analyze';clientId:string|null};
 };
 async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number) {
   const controller = new AbortController();
@@ -27,13 +29,14 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
     upstream?.removeEventListener('abort', abort);
   }
 }
-export async function askOneLeadQAgent(message: string, clientContext?: AIClientContext, signal?: AbortSignal): Promise<AIAgentResponse> {
+export type ConversationTurn = { role: 'user' | 'assistant'; content: string; clientId: string | null };
+export async function askOneLeadQAgent(message: string, clientContext?: AIClientContext, signal?: AbortSignal, history: ConversationTurn[] = []): Promise<AIAgentResponse> {
   const cleanMessage = message.trim();
   if (!cleanMessage) throw new Error('Message is required');
   try {
     const { response, data } = await fetchWithTimeout(AI_AGENT_URL + '/ai', {
       method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: cleanMessage, clientContext }),
+      body: JSON.stringify({ message: cleanMessage, clientContext, ...(history.length ? { history } : {}) }),
     }, AI_REQUEST_TIMEOUT);
     if (!data || typeof data !== 'object' || !('ok' in data) || data.ok !== true || !response.ok) {
       throw new Error('OneLeadQ AI Agent request failed');

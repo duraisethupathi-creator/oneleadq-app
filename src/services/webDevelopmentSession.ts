@@ -111,6 +111,7 @@ export async function pairWebDevelopmentDevice(
     );
   }
 
+  if (signal?.aborted) throw new Error('Pairing cancelled');
   setWebDevelopmentSession(
     data.sessionToken,
     data.expiresAt as number
