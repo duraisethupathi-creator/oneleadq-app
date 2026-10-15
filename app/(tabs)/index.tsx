@@ -1,3 +1,4 @@
+import { localDateKey } from "../../src/utils/localDate";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
@@ -57,7 +58,7 @@ export default function Dashboard() {
 
           setSelectedClientId(clients.some(client => client.id === currentClientId && client.status === "active") ? currentClientId : null);
           setCurrentClientName(clients.find(client => client.id === currentClientId && client.status === "active")?.name || "No client selected");
-          const today = new Date().toISOString().slice(0, 10);
+          const today = localDateKey();
 
           setTodayTasks(
             tasks.filter(

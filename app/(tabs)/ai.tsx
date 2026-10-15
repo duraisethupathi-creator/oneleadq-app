@@ -1,3 +1,4 @@
+import { localDateKey } from "../../src/utils/localDate";
 import React, { useCallback, useState } from "react";
 import { useFocusEffect } from "expo-router";
 
@@ -139,9 +140,7 @@ function getSmartTaskDetails(
 
   return {
     priority,
-    dueDate: dueDate
-      .toISOString()
-      .slice(0, 10),
+    dueDate: localDateKey(dueDate),
     approval,
   };
 }
@@ -250,6 +249,10 @@ export default function AI() {
         website: currentClient.website,
         location: currentClient.location,
         services: currentClient.services,
+        oneLeadQServices: currentClient.services,
+        productsServices: currentClient.productsServices,
+        phone: currentClient.phone,
+        email: currentClient.email,
         notes: currentClient.notes,
       }
     : undefined

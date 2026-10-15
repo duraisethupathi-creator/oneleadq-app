@@ -5,7 +5,8 @@
  [switch]$PauseRoaming,
  [switch]$AIOnly,
  [switch]$Stage16Fixture,
- [switch]$LiveAI
+ [string]$FixtureClientId = 'client-1791856192040',
+ [Alias('LiveAI')][switch]$WebsiteRoutingProbe
 )
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
@@ -58,6 +59,7 @@ function Check($Name,$Pattern) {
 }
 try {
  if(!(Test-Path -LiteralPath $Adb)){throw 'ADB executable unavailable'}
+ if($WebsiteRoutingProbe -and !$Stage16Fixture){throw 'WebsiteRoutingProbe requires explicit -Stage16Fixture; no submission attempted'}
  . (Join-Path $PSScriptRoot 'android-device-discovery.ps1')
  $runAdb = { param([string[]]$Arguments) & $Adb @Arguments }
  $Device = Resolve-OneLeadQAndroidDevice -RunAdb $runAdb -RequestedDevice $Device
@@ -69,7 +71,7 @@ try {
  Tap '(?i)(^Home$|, Home$)'; Check 'Home Dashboard' 'Agency Command Center'; Evidence home
  Tap '(?i)(^Clients$|, Clients$)'; Check 'Clients navigation' 'OneLeadQ client workspaces'; Check 'Client list' 'Stage 16'; Check 'Stage 16 fixture visibility' '(?i)Stage 16 test client'; Evidence clients
  if($Stage16Fixture){
-  Tap '^Stage 16 test client$'; Check 'Client workspace navigation' '^Client workspace$'; Check 'Fixture workspace identity' '^Stage 16 test client$'; Evidence fixture
+  Tap '^Stage 16 test client$'; if(Find '^SET AS CURRENT CLIENT$'){Tap '^SET AS CURRENT CLIENT$'}; Check 'Client workspace navigation' '^Client workspace$'; Check 'Fixture workspace identity' '^Stage 16 test client$'; Evidence fixture
   AdbCall -Arguments @('shell','input','keyevent','4') | Out-Null
  }else{Record 'Client workspace navigation' BLOCKED 'Use -Stage16Fixture to explicitly select the synthetic test client'}
 
@@ -80,21 +82,38 @@ try {
  if(Find '^CHECK$'){Tap '^CHECK$';Start-Sleep -Seconds 1}
  Check 'AI health label' 'AI Agent (Online|Offline)'
  Check 'Phone to AI backend connectivity' 'AI Agent Online'
+ if($WebsiteRoutingProbe -and !(Find '^Stage 16 test client$')){throw 'The selected AI client is not the Stage 16 fixture; no submission attempted'}
  for($i=0;$i -lt 3 -and !(Find '^GENERATE');$i++){Scroll-Screen down}
  Check 'Tamil Generate button' 'GENERATE / உருவாக்கு'; Evidence ai
 
  $xml=Screen; $input=@($xml.SelectNodes('//node') | Where-Object {$_.class -eq 'android.widget.EditText'})
  if($input.Count){Record 'AI input' PASS 'Accessible editable input found'}else{Record 'AI input' BLOCKED 'Input not in current viewport; scroll and retest'}
  Check 'Floating Assistant accessibility' '^Open OneLeadQ assistant$'
- if($LiveAI){Record 'Live AI submission' BLOCKED 'Use the configured fixture workflow; this runner deliberately does not submit arbitrary live requests'}else{Record 'AI submission and response' BLOCKED 'Live provider call omitted; mocked regression tests cover request handling'}
+ if($WebsiteRoutingProbe){
+  Tap '^AI prompt$';$focused=(Screen).SelectNodes('//node') | Where-Object { $_.'content-desc' -eq 'AI prompt' -and $_.focused -eq 'true' } | Select-Object -First 1
+  if(!$focused){throw 'AI prompt did not gain focus; submission not attempted'}
+  AdbCall -Arguments @('shell','input','keyevent','123') | Out-Null
+  $deleteCount=[Math]::Min(512,([string]$focused.text).Length+2)
+  AdbCall -Arguments (@('shell','input','keyevent')+(@('67')*$deleteCount)) | Out-Null
+  AdbCall -Arguments @('shell','input','text','Create%sa%swebsite') | Out-Null
+  AdbCall -Arguments @('shell','input','keyevent','4') | Out-Null;Start-Sleep -Milliseconds 800
+  $typed=Find '^AI prompt$';if(!$typed -or $typed.text -ne 'Create a website'){throw 'Fixture prompt could not be verified exactly; submission not attempted'}
+  Tap '^GENERATE';Record 'AI prompt submission' PASS 'Submitted only the validated fixture website-routing command; no provider inference requested'
+  for($i=0;$i -lt 4 -and !(Find '^Web Development Agent$');$i++){Scroll-Screen down;Start-Sleep -Milliseconds 500}
+  Check 'AI response rendering' '^Web Development Agent$'
+  for($i=0;$i -lt 4 -and !(Find '^Open Website Development workspace$');$i++){Scroll-Screen down}
+  Check 'Website workspace handoff entry' '^Open Website Development workspace$';Evidence ai-routing
+  Tap '^Open Website Development workspace$';Check 'Website handoff client ID' ([regex]::Escape($FixtureClientId));Evidence website-handoff
+  Tap '^Close Website Development workspace$'
+ }else{Record 'AI submission and response' BLOCKED 'Not exercised by navigation-only mode; use -WebsiteRoutingProbe -Stage16Fixture for the safe no-inference website route'}
  $xml=Screen;$nodes=@($xml.SelectNodes('//node'));$assistant=$nodes | Where-Object { $_.'content-desc' -eq 'Open OneLeadQ assistant' } | Select-Object -First 1
  $controls=@($nodes | Where-Object { $_.clickable -eq 'true' -and ($_.'content-desc' -match 'GENERATE|, (Home|Clients|AI|Tasks|More)$') })
  if($assistant -and $controls.Count){
   $a=Bounds $assistant;$overlaps=@($controls | Where-Object {$b=Bounds $_; $a[0] -lt $b[2] -and $a[2] -gt $b[0] -and $a[1] -lt $b[3] -and $a[3] -gt $b[1]})
-  Record 'Assistant overlap with visible controls' $(if($overlaps.Count){'FAIL'}else{'PASS'}) "$($overlaps.Count) intersections among $($controls.Count) visible Generate/navigation touch targets; response/keyboard checked separately"
+  Record 'Assistant launcher overlap with visible controls' $(if($overlaps.Count){'FAIL'}else{'PASS'}) "$($overlaps.Count) intersections among $($controls.Count) visible Generate/navigation touch targets; response/keyboard checked separately"
  }else{Record 'Assistant overlap with visible controls' BLOCKED 'Assistant or controls not accessible'}
 
- Record 'Website workflow' BLOCKED 'Requires Stage 16 fixture workspace/session; never approve, publish or deploy automatically'
+ Record 'Live final website generation' BLOCKED 'BLOCKED BY HUMAN APPROVAL. Preapproval generation/selection is covered separately; this runner never approves or publishes'
  # Capture crash signatures only; do not export arbitrary application logs or prompts.
  $crashes=AdbCall -Arguments @('logcat','-d','-t','500','AndroidRuntime:E','*:S')
  $count=@($crashes | Select-String 'FATAL EXCEPTION').Count

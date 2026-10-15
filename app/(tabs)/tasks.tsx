@@ -1,3 +1,4 @@
+import { localDateKey } from "../../src/utils/localDate";
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -12,7 +13,7 @@ import { AgencyTask, ApprovalStatus, TaskPriority, TaskStatus } from '../../src/
 type Filter='today'|'upcoming'|'pending'|'approval'|'completed';
 const filters:Filter[]=['today','upcoming','pending','approval','completed'];
 const labels:Record<Filter,string>={today:'Today',upcoming:'Upcoming',pending:'Pending',approval:'Approvals',completed:'Completed'};
-const blank=():AgencyTask=>({id:'',title:'',clientId:'',clientName:'',dueDate:new Date().toISOString().slice(0,10),priority:'medium',status:'pending',approval:'draft',notes:'',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+const blank=():AgencyTask=>({id:'',title:'',clientId:'',clientName:'',dueDate:localDateKey(),priority:'medium',status:'pending',approval:'draft',notes:'',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
 
 export default function Tasks(){
  const { view } = useLocalSearchParams<{view?:string}>();
@@ -56,7 +57,7 @@ useFocusEffect(
       active = false;
     };
   }, [view])
-); const today=new Date().toISOString().slice(0,10);
+); const today=localDateKey();
  const visible=useMemo(()=>tasks.filter(t=>filter==='today'?t.dueDate===today&&t.status!=='completed':filter==='upcoming'?t.dueDate>today&&t.status!=='completed':filter==='pending'?['pending','in_progress'].includes(t.status):filter==='approval'?t.approval==='waiting':t.status==='completed'),[tasks,filter,today]);
  async function commit(next:AgencyTask[]){setTasks(next);try{await saveTasks(next);}catch{Alert.alert('Save failed','Task change could not be saved.');}}
  function save(){if(!editor?.title.trim())return Alert.alert('Task title required');if(!editor.clientId)return Alert.alert('Client required','Select a client.');if(!/^\d{4}-\d{2}-\d{2}$/.test(editor.dueDate))return Alert.alert('Invalid date','Use YYYY-MM-DD.');
