@@ -1,4 +1,4 @@
-import { resolveAgencyIntent } from '../agents/registry';
+import { resolveAgencyIntent, serviceRegistry, type ServiceId } from '../agents/registry';
 import RoamingAssistant from './RoamingAssistant';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
@@ -52,6 +52,7 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
   const webModeRef = useRef(false);
   const [textMode, setTextMode] = useState(false);
   const [input, setInput] = useState('');
+  const [clarificationChoices, setClarificationChoices] = useState<ServiceId[]>([]);
   const [transcript, setTranscript] = useState('');
   const [message, setMessage] = useState("Hi! I'm your OneLeadQ AI Assistant. How can I help you today?");
   const [notice, setNotice] = useState('');
@@ -174,6 +175,7 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
     setOutcome('idle');
     setPendingReaction(requestReaction(q));
     setNotice('');
+    setClarificationChoices([]);
     setInput('');
     setMessage('OneLeadQ AI is processing your request…');
     try {
@@ -197,7 +199,7 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
       if (!valid(epoch)||controller.signal.aborted) return;
       if((currentId||null)!==clientId){conversation.forClient(currentId||null);setMessage('Selected client changed. Please send your request again.');return;}
       if(result.handoff?.kind==='web-development' && result.handoff.clientId===clientId){webModeRef.current=true;setWebMode(true);setWebWorkspaceOpen(false);setWebHandoff({clientId:clientId||'',mode:result.handoff.mode,intent:result.handoff.intent,nonce:Date.now()});setNotice(result.reply||'Review the selected client and configured project.');if(result.reply)void speak(result.reply,epoch);return;}
-      if (result.clarificationRequired || result.unavailable) { setMessage(result.reply || 'Choose one service to continue.'); setOutcome('alert'); if(result.reply)void speak(result.reply,epoch); return; }
+      if (result.clarificationRequired || result.unavailable) { setClarificationChoices(result.choices || []); setMessage(result.reply || 'Choose one service to continue.'); setOutcome('alert'); if(result.reply)void speak(result.reply,epoch); return; }
       if (!result.reply?.trim()) throw new Error('OneLeadQ AI returned an empty reply. Please try again.');
       const reply = readableReply(result.reply);
       conversation.append(clientId, q, reply);
@@ -518,6 +520,8 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
             <Text style={s.webText}>Select the configured project in the workspace. Analysis and all approvals stay there.</Text>
           </View> : <><View style={s.reply}><View style={s.replyMascot}><AssistantMascot reaction={reaction} active={active} /></View>
             <Text selectable style={s.replyText}>{message}</Text></View>
+        {clarificationChoices.map(id=>{const choice=serviceRegistry.find(item=>item.id===id)!;return <Pressable key={id} accessibilityRole="button" accessibilityLabel={'Choose '+choice.name} style={s.keyboardButton}
+          onPress={()=>{stopSpeech();setTextMode(true);setInput(choice.exampleCommand);setClarificationChoices([]);setMessage('Service selected. Review the input and send when ready. No request has been submitted.');}}><Text style={s.keyboardText}>{choice.name}{choice.status==='PLANNED'?' (planned)':''}</Text></Pressable>;})}
           {!!transcript && <Text selectable style={s.voiceHint}>You said: {transcript}</Text>}</>}
         {<>
         {talking && <Pressable accessibilityRole="button" onPress={stopSpeech} style={s.keyboardButton}><Text style={s.keyboardText}>Stop speaking</Text></Pressable>}

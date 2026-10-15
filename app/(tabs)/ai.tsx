@@ -28,6 +28,7 @@ import {
 } from "../../src/services/aiAgent";
 
 import { requestAgencyDraft as askOneLeadQAgent } from "../../src/services/agencyDraft";
+import { serviceRegistry, type ServiceId } from "../../src/agents/registry";
 import { consumeAICommand } from "../../src/assistant/commandHandoff";
 import { colors } from "../../src/theme";
 import WebDevelopmentPanel from "../../src/components/WebDevelopmentPanel";
@@ -195,6 +196,7 @@ export default function AI() {
   const [webOpen, setWebOpen] = useState(false);
   const [responseActionable, setResponseActionable] = useState(true);
   const [activityWarning, setActivityWarning] = useState(false);
+  const [clarificationChoices, setClarificationChoices] = useState<ServiceId[]>([]);
   useFocusEffect(useCallback(() => () => setWebOpen(false), []));
 
   useFocusEffect(useCallback(() => {
@@ -230,6 +232,7 @@ export default function AI() {
 
     setLoading(true);
 
+    setClarificationChoices([]);
     setWebHandoff(undefined);
     setWebOpen(false);
     setReply("");
@@ -258,6 +261,7 @@ export default function AI() {
       }
       if (!result.clarificationRequired && !result.unavailable) setConnected(true);
       setResponseActionable(!result.clarificationRequired && !result.unavailable);
+      setClarificationChoices(result.choices || []);
       setActivityWarning(result.historySaved === false);
 
       setAgent(
@@ -566,6 +570,8 @@ approval: smartDetails.approval,
             </Text>
 
             <Text style={{color:colors.gold,marginBottom:8}}>Drafts and guidance only. External actions require separate approval.</Text>
+            {clarificationChoices.map(id => { const choice=serviceRegistry.find(item=>item.id===id)!; return <Pressable key={id} accessibilityRole="button" accessibilityLabel={'Choose '+choice.name} disabled={loading} style={s.askButton}
+              onPress={() => { setMessage(choice.exampleCommand); setClarificationChoices([]); setReply('Service selected. Review the input and press Generate. No request has been submitted.'); }}><Text style={s.askButtonText}>{choice.name}{choice.status==='PLANNED'?' (planned)':''}</Text></Pressable>; })}
             <Text style={s.reply}>
               {formatAIResponse(reply)}
             </Text>

@@ -1,14 +1,14 @@
 ﻿export type ServiceId = 'webDevelopment' | 'mobileDevelopment' | 'seo' | 'metaAds' | 'googleAds' | 'content' | 'automation' | 'youtube';
 export type ServiceStatus = 'IMPLEMENTED' | 'PARTIAL' | 'PLANNED';
-export const serviceRegistry: ReadonlyArray<{id:ServiceId;name:string;status:ServiceStatus;capabilities:readonly string[]}> = [
-  {id:'webDevelopment',name:'Website Development',status:'PARTIAL',capabilities:['authenticated website drafts','design previews','separate approval gates']},
-  {id:'mobileDevelopment',name:'Mobile Application Development',status:'PLANNED',capabilities:[]},
-  {id:'seo',name:'SEO & Local SEO',status:'PARTIAL',capabilities:['draft advice','static website audit through Website workflow']},
-  {id:'metaAds',name:'Meta Ads Management',status:'PARTIAL',capabilities:['draft advice only']},
-  {id:'googleAds',name:'Google Ads Management',status:'PARTIAL',capabilities:['draft advice only']},
-  {id:'content',name:'Social Media Content Creation',status:'PARTIAL',capabilities:['draft copy only']},
-  {id:'automation',name:'Business Automation',status:'PLANNED',capabilities:[]},
-  {id:'youtube',name:'YouTube Growth & Channel Management',status:'PLANNED',capabilities:[]},
+export const serviceRegistry: ReadonlyArray<{id:ServiceId;name:string;status:ServiceStatus;capabilities:readonly string[];exampleCommand:string}> = [
+  {id:'webDevelopment',exampleCommand:'Create a website',name:'Website Development',status:'PARTIAL',capabilities:['authenticated website drafts','design previews','separate approval gates']},
+  {id:'mobileDevelopment',exampleCommand:'Build a mobile app',name:'Mobile Application Development',status:'PLANNED',capabilities:[]},
+  {id:'seo',exampleCommand:'Review SEO',name:'SEO & Local SEO',status:'PARTIAL',capabilities:['draft advice','static website audit through Website workflow']},
+  {id:'metaAds',exampleCommand:'Create Meta Ads strategy',name:'Meta Ads Management',status:'PARTIAL',capabilities:['draft advice only']},
+  {id:'googleAds',exampleCommand:'Create Google Ads strategy',name:'Google Ads Management',status:'PARTIAL',capabilities:['draft advice only']},
+  {id:'content',exampleCommand:'Write social media content',name:'Social Media Content Creation',status:'PARTIAL',capabilities:['draft copy only']},
+  {id:'automation',exampleCommand:'Create business automation',name:'Business Automation',status:'PLANNED',capabilities:[]},
+  {id:'youtube',exampleCommand:'Create YouTube plan',name:'YouTube Growth & Channel Management',status:'PLANNED',capabilities:[]},
 ];
 export type AgencyIntent = {kind:'general'} | {kind:'route';serviceId:ServiceId;backendId:string} | {kind:'clarify';choices:ServiceId[];question:string} | {kind:'unavailable';serviceId:ServiceId;message:string};
 export function resolveAgencyIntent(message: string): AgencyIntent {

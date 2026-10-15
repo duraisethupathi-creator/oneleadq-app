@@ -2,14 +2,16 @@
 const file='app/(tabs)/ai.tsx';
 const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true}}).outputText;
 const fixture={id:'stage16-fixture',name:'Fixture only',services:['Web Development','Mobile App Development','Business Automation']};
-let state, cursor, payload;
+let state, cursor, payload, requests=0;
+const registry={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/agents/registry.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:registry});
 let storedClientId=fixture.id;
 const react={createElement:(type,props,...children)=>({type,props:props||{},children:children.flat()}),useState:initial=>{const n=cursor++;if(!(n in state))state[n]=initial;return[state[n],value=>state[n]=value]},useCallback:x=>x};
 const rn=new Proxy({StyleSheet:{create:x=>x},Platform:{OS:'android'},Alert:{alert:()=>{}}},{get:(target,key)=>target[key]||key});
 const exportsObject={};
 vm.runInNewContext(code,{exports:exportsObject,require:name=>{
  if(name==='react')return react;if(name==='react-native')return rn;if(name==='expo-router')return {useFocusEffect:()=>{}};
- if(name.endsWith('/aiAgent')||name.endsWith('/agencyDraft'))return {[name.endsWith('/agencyDraft')?'requestAgencyDraft':'askOneLeadQAgent']:async(message,context)=>{payload={message,context};return {ok:true,agent:'Website Agent',reply:'Fixture reply',handoff:{kind:'web-development',clientId:context.id,mode:'CREATE_NEW',intent:'create'}}},checkAIAgentHealth:async()=>({connected:true})};
+ if(name.endsWith('/aiAgent')||name.endsWith('/agencyDraft'))return {[name.endsWith('/agencyDraft')?'requestAgencyDraft':'askOneLeadQAgent']:async(message,context)=>{requests++;payload={message,context};if(message==='Create ads')return {ok:true,agent:'Choose a service',reply:'Which ads?',clarificationRequired:true,choices:['metaAds','googleAds']};return {ok:true,agent:'Website Agent',reply:'Fixture reply',handoff:{kind:'web-development',clientId:context.id,mode:'CREATE_NEW',intent:'create'}}},checkAIAgentHealth:async()=>({connected:true})};
+ if(name.endsWith('/registry'))return registry;
  if(name.endsWith('/clientStorage'))return {loadCurrentClientId:async()=>storedClientId};
  if(name.endsWith('/theme'))return {colors:{}};return {};
 }});
@@ -25,5 +27,6 @@ function nodes(tree){return tree&&typeof tree==='object'?[tree,...tree.children.
  tree=render([fixture,'fixture prompt','Fixture reply','Website Agent','',true,false]);assert.ok(nodes(tree).some(x=>x.props.onPress?.name==='addAIResponseToTasks'));
  assert.ok(nodes(tree).some(x=>x.props.accessibilityLabel==='AI prompt'));
  storedClientId='other-client';tree=render([fixture,'fixture prompt','','','',null,false]);await nodes(tree).find(x=>x.type==='Pressable'&&x.props.onPress?.name==='askAI').props.onPress();assert.match(state[2],/Selected client changed/);assert.equal(state[3],'');
+ storedClientId=fixture.id;tree=render([fixture,'Create ads','','','',null,false]);await nodes(tree).find(x=>x.props.onPress?.name==='askAI').props.onPress();tree=render(state);const before=requests;const choice=nodes(tree).find(x=>x.props.accessibilityLabel==='Choose Meta Ads Management');assert.ok(choice);choice.props.onPress();assert.equal(state[1],'Create Meta Ads strategy');assert.equal(requests,before,'Choosing a service must not submit or spend');
  console.log('PASS: AI tab sends selected client ID/services, hides task action for failed requests and shows it for successful replies; accessible prompt');
 })().catch(e=>{console.error(e);process.exitCode=1});
