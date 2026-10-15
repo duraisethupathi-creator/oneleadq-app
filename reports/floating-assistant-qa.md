@@ -1,22 +1,18 @@
-# Floating Assistant QA — 2026-10-16 IST
+# Floating Assistant QA
 
-Sprint 1 is PARTIALLY VERIFIED. Original anime walk assets are retained at 100x122dp. Roaming is touch-transparent; the explicit Move control enables drag capture only until release. Walk resumes autonomous motion. Only walk artwork exists; running reuses those frames faster, and unavailable facial/talking artwork is not fabricated.
+Updated 2026-10-16 IST. Continued the existing qa/stage16-20261015 branch from baseline 679161f (prior continuation of af682b7); requested a/stage16-20261015 was absent. Functional source verified through ab74a20. Earlier dirty frontend prerequisites were audited and integrated; unrelated artifacts were preserved. Backend pre-existing dirty work was not edited. No publication, deployment, merge, push, paid inference, real-customer mutation or human approval occurred.
 
-| Test ID | Feature | Expected result | Actual result | Test method | Status | Evidence | Fix commit |
+PARTIALLY VERIFIED. Original anime artwork restored as a roaming, pass-through character. Talk/Move/Resume controls occupy a reserved footer; Move alone enables drag. Keyboard and inactive-app states stop/hide the character. Running reuses existing frames at faster timing; no new facial artwork was invented.
+
+| Test ID | Feature | Expected | Actual | Method | Status | Evidence | Fix commit |
 |---|---|---|---|---|---|---|---|
-| FA-U01 | Touch-through | Normal movement never consumes page taps | pointerEvents none asserted | Component harness | PASS | scripts/test-roaming-assistant.cjs | Sprint 1 |
-| FA-U02 | Center route | Route includes screen center with native driver | Center target coordinates and native driver asserted | Component harness | PASS | Same script | Sprint 1 |
-| FA-U03 | Run | Faster supported animation phase | 2600ms phase asserted | Component harness | PASS | Same script | Sprint 1 |
-| FA-U04 | Drag | Explicit drag clamped to viewport; release drops capture | Gesture callbacks and clamping asserted | Component harness | PASS | Same script | Sprint 1 |
-| FA-U05 | Resume | Walking restarts after manual anchoring | New animation created | Component harness | PASS | Same script | Sprint 1 |
-| FA-U06 | Wake | Move/Walk wake an idle session | Callback count asserted | Component harness | PASS | Same script | Sprint 1 |
-| FA-U07 | Keyboard | Hide roaming while keyboard visible | Character absent and animation stopped | Component harness | PASS | Same script | Sprint 1 |
-| FA-U08 | Background | Hide inactive character | Character absent in inactive state | Component harness | PASS | Same script | Sprint 1 |
-| FA-U09 | Cleanup | Remove subscriptions and stop loops | Two listeners removed and animation stopped | Component harness | PASS | Same script | Sprint 1 |
-| FA-N01 | Visible motion | Real screenshots show displacement | Initial samples remained Resting; wake correction added. Reload stalls and stale bundle prevent final acceptance so far | ADB XML/screenshots | BLOCKED | reports/android/precision-motion-1..3.xml; local Metro restart | Sprint 1 |
-| FA-N02 | Center movement | Character passes through center third | Initial resting position outside center; fresh-bundle retest pending | ADB | BLOCKED | Local motion evidence | Sprint 1 |
-| FA-N03 | Drag | Character moves by real swipe | Bounds-derived swipe moved character | ADB | PASS | reports/android/precision-drag-start/end.xml and PNG | Sprint 1 |
-| FA-N04 | Underlying control | Covered task tile remains clickable | Work + approval center appeared after tap | ADB | PASS | reports/android/precision-underlying-tap.xml | Sprint 1 |
-| FA-N05 | Navigation | Character remains available after navigation | Available after tab navigation; continuing displacement not yet confirmed | ADB | PASS | reports/android/precision-after-navigation.xml | Sprint 1 |
+| FA-U01 | Roaming/state/cleanup | Animation and event cleanup; safe bounds | 11 focused checks pass | Component simulation | PASS | scripts/test-roaming-assistant.cjs | 91026d2 / 333651a |
+| FA-N01 | Native walking | Visible autonomous displacement including centre | Three uninterrupted unpaused screenshots show displacement | Actual I2127 screenshots | PASS | reports/android/precision-unpaused-motion-{1,2,3}.png | 91026d2 |
+| FA-N03 | Drag | Move mode relocates character within bounds | Fresh XML confirms displacement after measured swipe | Actual phone | PASS | reports/android/precision-fresh-native-results.json; precision-fresh-drag-start/end.xml/png | 91026d2 |
+| FA-N04 | Touch-through | Covered tile still activates | Today Tasks opens Tasks below anchored character | Actual phone | PASS | reports/android/precision-fresh-touch-through.xml/png | 91026d2 |
+| FA-N06 | Keyboard | Character clears typing controls | Character absent with native keyboard open | Actual phone | PASS | reports/android/precision-fresh-keyboard.xml/png | 91026d2 |
+| FA-N07 | Control overlap | Launcher clears visible Generate/navigation | Zero intersections in navigation run | Measured accessible bounds | PASS | Fresh AI capture; observed 15/0/2 navigation transcript | 91026d2 |
+| FA-N08 | Running performance/orientation | Measured frame timing and all orientations | Timing asserted in component; native profiling/other devices not run | Not executed | NOT RUN | No native performance trace | � |
+| FA-Q01 | Fresh automation hierarchy | Reject stale cache even exit-zero idle failure | 3 guard checks pass; stale earlier apparent failures invalidated | PowerShell mocked ADB | PASS | scripts/test-android-screen.ps1 | 333651a |
 
-TypeScript and existing microphone component tests pass. Actual repeating motion, center-screen movement, keyboard acceptance and crash review must be completed on the fresh bundle before claiming Sprint 1 complete. Native evidence is ignored by Git because it may include client details. No client records were edited.
+The development-only pause is guarded by __DEV__; intermittent native idle capture still blocks the optional routing probe safely. Earlier precision-motion/drag captures are superseded by the fresh/native evidence above. No claim of exhaustive button coverage or animation profiling.
