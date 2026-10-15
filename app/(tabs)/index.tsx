@@ -14,6 +14,7 @@ import { loadContent } from "../../src/storage/contentStorage";
 import { loadTasks } from "../../src/storage/taskStorage";
 import { loadSEOIssues } from "../../src/storage/seoStorage";
 import { loadLeads } from "../../src/storage/leadStorage";
+import RecentAgentActivity from "../../src/components/RecentAgentActivity";
 import { queueAICommand } from "../../src/assistant/commandHandoff";
 import { colors } from "../../src/theme";
 import { loadClients, loadCurrentClientId } from "../../src/storage/clientStorage";
@@ -220,6 +221,7 @@ export default function Dashboard() {
         ))}
       </View>
 
+      <RecentAgentActivity clientId={selectedClientId} />
       <Pressable
         style={s.ai}
         onPress={() => router.push("/(tabs)/ai")}

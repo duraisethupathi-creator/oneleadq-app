@@ -24,10 +24,10 @@ import {
 } from "react-native";
 
 import {
-  askOneLeadQAgent,
   checkAIAgentHealth,
 } from "../../src/services/aiAgent";
 
+import { requestAgencyDraft as askOneLeadQAgent } from "../../src/services/agencyDraft";
 import { consumeAICommand } from "../../src/assistant/commandHandoff";
 import { colors } from "../../src/theme";
 import WebDevelopmentPanel from "../../src/components/WebDevelopmentPanel";
@@ -193,6 +193,8 @@ export default function AI() {
   const [loading, setLoading] = useState(false);
   const [webHandoff, setWebHandoff] = useState<{clientId:string;mode:"CREATE_NEW"|"UPGRADE_EXISTING";intent:string;nonce:number}>();
   const [webOpen, setWebOpen] = useState(false);
+  const [responseActionable, setResponseActionable] = useState(true);
+  const [activityWarning, setActivityWarning] = useState(false);
   useFocusEffect(useCallback(() => () => setWebOpen(false), []));
 
   useFocusEffect(useCallback(() => {
@@ -249,10 +251,14 @@ export default function AI() {
       }
     : undefined
 );
+      const latestClientId = await loadCurrentClientId();
+      if ((latestClientId || null) !== (currentClient?.id || null)) { setReply('Selected client changed. Please review and send your request again.'); setAgent(''); setResponseActionable(false); return; }
       if (result.handoff?.kind === "web-development" && result.handoff.clientId === currentClient?.id) {
         setWebHandoff({clientId:currentClient.id,mode:result.handoff.mode,intent:result.handoff.intent,nonce:Date.now()});
       }
-      setConnected(true);
+      if (!result.clarificationRequired && !result.unavailable) setConnected(true);
+      setResponseActionable(!result.clarificationRequired && !result.unavailable);
+      setActivityWarning(result.historySaved === false);
 
       setAgent(
         result.agent || "OneLeadQ AI"
@@ -536,6 +542,7 @@ approval: smartDetails.approval,
           </View>
         )}
 
+        {activityWarning && <Text accessibilityRole="alert" style={{color:colors.danger,padding:20}}>The reply is available, but activity history could not be saved.</Text>}
         {/* AI RESPONSE */}
 
         {!!reply && (
@@ -558,6 +565,7 @@ approval: smartDetails.approval,
               AI Response
             </Text>
 
+            <Text style={{color:colors.gold,marginBottom:8}}>Drafts and guidance only. External actions require separate approval.</Text>
             <Text style={s.reply}>
               {formatAIResponse(reply)}
             </Text>
@@ -566,7 +574,7 @@ approval: smartDetails.approval,
                 <Text style={s.addTaskButtonText}>OPEN WEBSITE WORKSPACE / இணையதளம்</Text>
               </Pressable>
             )}
-            {currentClient && agent && (
+            {currentClient && agent && responseActionable && (
   <Pressable
     style={s.addTaskButton}
     onPress={addAIResponseToTasks}

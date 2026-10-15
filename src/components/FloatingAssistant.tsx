@@ -1,10 +1,11 @@
+import { resolveAgencyIntent } from '../agents/registry';
 import RoamingAssistant from './RoamingAssistant';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { forwardRef, memo, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Animated, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View, StyleSheet, useWindowDimensions } from 'react-native';
-import { askOneLeadQAgent } from '../services/aiAgent';
+import { requestAgencyDraft as askOneLeadQAgent } from '../services/agencyDraft';
 import { loadClients, loadCurrentClientId } from '../storage/clientStorage';
 import { AssistantReaction, reactionVisuals, readableReply, requestReaction, resolveReaction, responseReaction } from '../assistant/reactions';
 import { VoiceSession } from '../assistant/VoiceSession';
@@ -177,6 +178,7 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
         location: client.location, services: client.services, notes: client.notes,
       } : undefined, controller.signal);
       if (!valid(epoch)) return;
+      if (result.clarificationRequired || result.unavailable) { setMessage(result.reply || 'Choose one service to continue.'); setOutcome('alert'); if(result.reply)void speak(result.reply,epoch); return; }
       if (!result.reply?.trim()) throw new Error('OneLeadQ AI returned an empty reply. Please try again.');
       const reply = readableReply(result.reply);
       setMessage(reply);
