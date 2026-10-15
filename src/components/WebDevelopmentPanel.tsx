@@ -251,6 +251,7 @@ async function pairDevice() {
           onChangeText={setCommitMessage} style={styles.input} />
         <Button label="Prepare commit approval (no commit)" disabled={blocked || !commitMessage.trim()}
           onPress={() => void execute('propose-commit', { message: commitMessage.trim() })} />
+      </>}
       {state === 'WAITING_FOR_COMMIT_APPROVAL' && workflow.commitApprovalId && <>
         {reviewedCommit?.id !== workflow.commitApprovalId && <Text style={styles.warning}>Commit approval is unavailable for this resumed workflow because the backend does not return its original message. Use the original reviewing session.</Text>}
         <Button label="Review commit approval" disabled={blocked || reviewedCommit?.id !== workflow.commitApprovalId}
