@@ -220,6 +220,7 @@ export default function AI() {
   cleanMessage,
   currentClient
     ? {
+        id: currentClient.id,
         name: currentClient.name,
         businessType: currentClient.businessType,
         website: currentClient.website,
@@ -469,6 +470,7 @@ approval: smartDetails.approval,
 
           <TextInput
             style={s.input}
+            accessibilityLabel="AI prompt"
             value={message}
             onChangeText={setMessage}
             placeholder="Example: Create a ₹500/day Meta Ads strategy for Catchy Decors"
@@ -492,7 +494,7 @@ approval: smartDetails.approval,
             <Text style={s.askButtonText}>
               {loading
                 ? "AI IS THINKING..."
-                : "ASK AI"}
+                : "GENERATE / உருவாக்கு"}
             </Text>
           </Pressable>
         </View>
@@ -537,7 +539,7 @@ approval: smartDetails.approval,
             <Text style={s.reply}>
               {formatAIResponse(reply)}
             </Text>
-            {currentClient && (
+            {currentClient && agent && (
   <Pressable
     style={s.addTaskButton}
     onPress={addAIResponseToTasks}
@@ -601,7 +603,8 @@ clientContextMeta: {
   },
 
   content: {
-    paddingBottom: 40,
+    // Keep the final response and task action scrollable above the 122px assistant.
+    paddingBottom: 190,
   },
 
   header: {

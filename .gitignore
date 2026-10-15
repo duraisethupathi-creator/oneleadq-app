@@ -10,3 +10,6 @@ web-build/
 .env
 .env.*
 !.env.example
+
+# Local QA evidence may contain client information
+reports/android/
