@@ -1,3 +1,4 @@
+import RoamingAssistant from './RoamingAssistant';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
@@ -35,8 +36,8 @@ const AssistantMascot = memo(function AssistantMascot({ reaction, facingLeft = f
 });
 
 export type FloatingAssistantHandle = { handleScreenTouch: () => void };
-export type FloatingAssistantProps = { getWebDevelopmentSessionToken?: WebSessionTokenProvider; compactDock?: boolean };
-const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantProps>(function FloatingAssistant({ getWebDevelopmentSessionToken, compactDock = false }, ref) {
+export type FloatingAssistantProps = { getWebDevelopmentSessionToken?: WebSessionTokenProvider; compactDock?: boolean; wakeSignal?: string };
+const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantProps>(function FloatingAssistant({ getWebDevelopmentSessionToken, compactDock = false, wakeSignal }, ref) {
   const [open, setOpen] = useState(false);
   const [webMode, setWebMode] = useState(false);
   const webModeRef = useRef(false);
@@ -416,7 +417,7 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
   }, []);
 
   useEffect(() => {
-    if (open || !active || sleeping || !moving || travel === 0) return;
+    if (compactDock || open || !active || sleeping || !moving || travel === 0) return;
     let stopped = false;
     let animation: Animated.CompositeAnimation | null = null;
     function step(left: boolean) {
@@ -428,10 +429,12 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
     walkX.stopAnimation(value => step(value > -travel + 2));
     walkTimer.current = setTimeout(() => setMoving(false), WALK_FOR_MS);
     return () => { stopped = true; animation?.stop(); walkX.stopAnimation(); if (walkTimer.current) clearTimeout(walkTimer.current); };
-  }, [open, active, sleeping, moving, travel, walkX]);
+  }, [compactDock, open, active, sleeping, moving, travel, walkX]);
+
+  useEffect(() => { if (wakeSignal !== undefined && activeRef.current) wake(); }, [wakeSignal]);
 
   useImperativeHandle(ref, () => ({ handleScreenTouch() {
-    if (!openRef.current) setMoving(false);
+    if (!openRef.current && !compactDock) setMoving(false);
     wake();
   } }));
 
@@ -506,11 +509,13 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
         </>}
       </View>
     </KeyboardAvoidingView>}
-    <Animated.View pointerEvents="box-none" style={[s.walker, compactDock && { bottom: 8 }, { transform: [{ translateX: open ? 0 : walkX }] }]}>
+    {compactDock ? <RoamingAssistant active={!open && active} awake={!sleeping} onOpen={toggleAssistant} onWake={wake}>
+      {(running, walking, left) => <AssistantMascot reaction={reaction === 'walking' ? (walking ? (running ? 'running' : 'walking') : 'idle') : reaction} active={active && !sleeping} facingLeft={left} />}
+    </RoamingAssistant> : <Animated.View pointerEvents="box-none" style={[s.walker, compactDock && { bottom: 8 }, { transform: [{ translateX: open ? 0 : walkX }] }]}>
       <Pressable accessibilityRole="button" accessibilityLabel={open ? 'Close OneLeadQ assistant' : 'Open OneLeadQ assistant'} onPress={toggleAssistant} style={[s.bot, compactDock && { width: 56, height: 56 }]}>
         <AssistantMascot reaction={reaction} active={active} facingLeft={!open && facingLeft} />
       </Pressable>
-    </Animated.View>
+    </Animated.View>}
   </View>;
 });
 export default FloatingAssistant;

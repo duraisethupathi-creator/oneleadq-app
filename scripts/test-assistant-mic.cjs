@@ -47,6 +47,7 @@ function harness(status, requested = granted, androidVersion = 35) {
       if (name.endsWith('/reactions')) return load('src/assistant/reactions.ts');
       if (name.endsWith('/clientStorage')) return { loadCurrentClientId: async () => null, loadClients: async () => [] };
       if (name.endsWith('/aiAgent')) return { askOneLeadQAgent: async message => { calls.ai++; calls.message = message; return { reply: 'Done', ok: true }; } };
+      if (name === './RoamingAssistant') return { __esModule: true, default: 'RoamingAssistant' };
       if (name === './WebDevelopmentPanel') return { default: 'WebDevelopmentPanel' };
       if (name.endsWith('.png')) return name;
       throw new Error('Unexpected import ' + name);
