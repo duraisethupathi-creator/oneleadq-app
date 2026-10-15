@@ -28,6 +28,7 @@ function Report({ title, value }: { title: string; value: unknown }) {
 export default function WebDevelopmentPanel({ active, getSessionToken }: {
   active: boolean; getSessionToken?: WebSessionTokenProvider;
 }) {
+  const [advanced, setAdvanced] = useState(false);
   const [client, setClient] = useState<{ id: string; name: string } | null>(null);
   const [pairingCode, setPairingCode] = useState('');
 const [sessionReady, setSessionReady] = useState(() => hasWebDevelopmentSession());
@@ -149,7 +150,8 @@ async function pairDevice() {
   }
 
   return <View style={styles.panel}>
-    <Text style={styles.heading}>Web Development</Text>
+    <Text style={styles.heading}>Create your website / இணையதளம்</Text>
+    <Text style={styles.text}>Review business details → Choose a design → Human approval → Generate and validate. Publishing is a separate action.</Text>
     <Text style={styles.text}>Client: {client ? `${client.name} (${client.id})` : 'No active client selected'}</Text>
     <Text accessibilityLiveRegion="polite" style={styles.state}>State: {state || 'No workflow'}{pending ? ` · ${pending} in progress` : ''}</Text>
     {!getSessionToken && <Text style={styles.warning}>Authentication required: secure session provisioning is not connected. Actions are unavailable.</Text>}
@@ -249,7 +251,6 @@ async function pairDevice() {
           onChangeText={setCommitMessage} style={styles.input} />
         <Button label="Prepare commit approval (no commit)" disabled={blocked || !commitMessage.trim()}
           onPress={() => void execute('propose-commit', { message: commitMessage.trim() })} />
-      </>}
       {state === 'WAITING_FOR_COMMIT_APPROVAL' && workflow.commitApprovalId && <>
         {reviewedCommit?.id !== workflow.commitApprovalId && <Text style={styles.warning}>Commit approval is unavailable for this resumed workflow because the backend does not return its original message. Use the original reviewing session.</Text>}
         <Button label="Review commit approval" disabled={blocked || reviewedCommit?.id !== workflow.commitApprovalId}
