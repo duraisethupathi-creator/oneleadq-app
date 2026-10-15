@@ -68,7 +68,7 @@ async function main() {
     assert.equal(name, 'expo-speech');
     return { getAvailableVoicesAsync: async () => { lookups++; return inventory; } };
   } });
-  assert.equal(voiceHelper.ASSISTANT_GREETING, 'Hi dude! என்ன உதவி வேண்டும்?');
+  assert.equal(voiceHelper.ASSISTANT_GREETING, 'Hello! சொல்லுங்க, என்ன பண்ணலாம்?');
   assert.equal(voiceHelper.selectAssistantVoice(voices).identifier, 'tamil-enhanced');
   assert.equal(voiceHelper.selectAssistantVoice([voices[0], voices[3]]).identifier, 'multilingual-india');
   assert.equal(voiceHelper.selectAssistantVoice([voices[0]]).identifier, 'english-india');

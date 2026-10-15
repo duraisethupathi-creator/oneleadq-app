@@ -1,6 +1,6 @@
 import * as Speech from 'expo-speech';
 
-export const ASSISTANT_GREETING = 'Hi dude! என்ன உதவி வேண்டும்?';
+export const ASSISTANT_GREETING = 'Hello! சொல்லுங்க, என்ன பண்ணலாம்?';
 const RATE = 0.92;
 const PITCH = 1.0;
 const locale = (voice: Speech.Voice) => voice.language.replace(/_/g, '-').toLowerCase();

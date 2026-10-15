@@ -7,8 +7,8 @@ export function clampCharacter(x: number, y: number, width: number, height: numb
 }
 
 /** Normal roaming is touch-transparent. Reposition mode captures only the character until release. */
-export default function RoamingAssistant({ active, awake, onOpen, onWake, children }: {
-  active: boolean; awake: boolean; onOpen: () => void; onWake?: () => void; children: (running: boolean, walking: boolean, left: boolean) => ReactNode;
+export default function RoamingAssistant({ active, awake, paused = false, onOpen, onWake, children }: {
+  active: boolean; awake: boolean; paused?: boolean; onOpen: () => void; onWake?: () => void; children: (running: boolean, walking: boolean, left: boolean) => ReactNode;
 }) {
   const { width, height } = useWindowDimensions();
   const [keyboard, setKeyboard] = useState(false);
@@ -31,7 +31,7 @@ export default function RoamingAssistant({ active, awake, onOpen, onWake, childr
   }, [point]);
 
   useEffect(() => {
-    if (!active || !awake || keyboard || reposition || anchored) { point.stopAnimation(); return; }
+    if (paused || !active || !awake || keyboard || reposition || anchored) { point.stopAnimation(); return; }
     let stopped = false;
     let animation: Animated.CompositeAnimation | undefined;
     let step = 0;
@@ -52,7 +52,7 @@ export default function RoamingAssistant({ active, awake, onOpen, onWake, childr
     }
     point.stopAnimation(position => { if (!stopped) { point.setValue(clampCharacter(position.x, position.y, width, height)); move(); } });
     return () => { stopped = true; animation?.stop(); point.stopAnimation(); };
-  }, [active, awake, keyboard, reposition, anchored, width, height, point]);
+  }, [active, awake, paused, keyboard, reposition, anchored, width, height, point]);
 
   const responder = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => canDrag.current,
@@ -68,7 +68,7 @@ export default function RoamingAssistant({ active, awake, onOpen, onWake, childr
       accessible accessibilityRole="image" accessibilityLabel="OneLeadQ roaming character"
       accessibilityHint="Choose Move assistant below to drag the character. Normal movement allows taps through."
       style={[s.character, { transform: point.getTranslateTransform() }]}>
-      {children(running && !anchored && !reposition && awake, !anchored && !reposition && awake, left)}
+      {children(running && !anchored && !reposition && awake, !paused && !anchored && !reposition && awake, left)}
     </Animated.View>}
     {active && !keyboard && <View pointerEvents="box-none" style={s.controls}>
       <Pressable accessibilityRole="button" accessibilityLabel="Open OneLeadQ assistant" onPress={onOpen} style={s.button}><Text style={s.label}>AI பேசு / Talk</Text></Pressable>

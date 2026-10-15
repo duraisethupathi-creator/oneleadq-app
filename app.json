@@ -8,6 +8,7 @@
     "userInterfaceStyle": "automatic",
         "android": {
       "package": "com.oneleadq.app",
+      "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ]

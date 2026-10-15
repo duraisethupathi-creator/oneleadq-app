@@ -7,7 +7,8 @@ const root = path.resolve(__dirname, '..');
 const granted = { granted: true, status: 'granted', canAskAgain: true };
 const deferred = () => { let resolve; const promise = new Promise(r => resolve = r); return { promise, resolve }; };
 const flush = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); };
-function harness(status, requested = granted, androidVersion = 35) {
+function harness(status, requested = granted, androidVersion = 35, initialClient = null) {
+  let currentClient=initialClient;
   const timers = new Map(); let clock = 0, timerId = 0;
   const slots = []; let cursor = 0, mounted = false, pendingEffect;
   const events = {}, logs = [], calls = { request: 0, start: 0, stop: 0, abort: 0, ai: 0, options: null, message: null };
@@ -29,7 +30,7 @@ function harness(status, requested = granted, androidVersion = 35) {
   };
   const rn = { AppState: app, Platform: { OS: 'android', Version: androidVersion }, useWindowDimensions: () => ({ width: 400, height: 800 }),
     StyleSheet: { create: x => x }, Animated: { Value: class { stopAnimation() {} }, View: 'AnimatedView' } };
-  for (const name of ['Image','KeyboardAvoidingView','Pressable','ScrollView','Text','TextInput','View']) rn[name] = name;
+  for (const name of ['Modal','Image','KeyboardAvoidingView','Pressable','ScrollView','Text','TextInput','View']) rn[name] = name;
   function load(file) {
     const exports = {};
     const source = ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), { compilerOptions: {
@@ -44,12 +45,15 @@ function harness(status, requested = granted, androidVersion = 35) {
       if (name === 'expo-speech-recognition') return { ExpoSpeechRecognitionModule: native, useSpeechRecognitionEvent: (name, fn) => events[name] = fn };
       if (name.endsWith('/speechVoice')) return load('src/assistant/speechVoice.ts');
       if (name.endsWith('/VoiceSession')) return load('src/assistant/VoiceSession.ts');
+      if (name.endsWith('/webDevelopmentIntent')) return load('src/assistant/webDevelopmentIntent.ts');
+      if (name.endsWith('/ConversationMemory')) return load('src/assistant/ConversationMemory.ts');
       if (name.endsWith('/reactions')) return load('src/assistant/reactions.ts');
-      if (name.endsWith('/clientStorage')) return { loadCurrentClientId: async () => null, loadClients: async () => [] };
-      if (name.endsWith('/aiAgent') || name.endsWith('/agencyDraft')) return { [name.endsWith('/agencyDraft') ? 'requestAgencyDraft' : 'askOneLeadQAgent']: async message => { calls.ai++; calls.message = message; return { reply: 'Done', ok: true }; } };
+      if (name.endsWith('/clientStorage')) return { loadCurrentClientId: async () => currentClient?.id||null, loadClients: async () => currentClient?[currentClient]:[] };
+      if (name.endsWith('/aiAgent') || name.endsWith('/agencyDraft')) return { [name.endsWith('/agencyDraft') ? 'requestAgencyDraft' : 'askOneLeadQAgent']: async (message,clientContext,signal,history) => { require('D:/MY AGENT/oneleadq-ai-agent/agents/conversation').validateConversation({message,clientContext,history});calls.ai++; calls.message = message;calls.context=clientContext;calls.history=history;calls.reply=require('D:/MY AGENT/oneleadq-ai-agent/agents/grounding').groundedReply(message,clientContext,history)||'Done'; return { reply: calls.reply, ok: true }; } };
+      if (name === './webDevelopmentWebsiteTypes') return load('src/components/webDevelopmentWebsiteTypes.ts');
       if (name.endsWith('/registry')) return load('src/agents/registry.ts');
       if (name === './RoamingAssistant') return { __esModule: true, default: 'RoamingAssistant' };
-      if (name === './WebDevelopmentPanel') return { default: 'WebDevelopmentPanel' };
+      if (name === './WebDevelopmentPanel') return { __esModule: true, default: 'WebDevelopmentPanel' };
       if (name.endsWith('.png')) return name;
       throw new Error('Unexpected import ' + name);
     };
@@ -65,7 +69,9 @@ function harness(status, requested = granted, androidVersion = 35) {
     for (const child of [node.props?.children].flat(Infinity)) { const result = find(child, label); if (result) return result; }
   }
   render(); find(render(), 'Open OneLeadQ assistant').props.onPress();
-  return { calls, logs, events,
+  return { calls, logs, events, render,
+    find:label=>find(render(),label),
+    switchClient:client=>{currentClient=client;},
     advance: ms => { clock += ms; for (const [id, timer] of [...timers]) if (timer.at <= clock) { timers.delete(id); timer.fn(); } },
     tap: () => find(render(), 'Start voice listening').props.onPress(),
     stop: () => find(render(), 'Finish voice recording').props.onPress(),
@@ -134,6 +140,27 @@ async function main() {
   mode.chat(); mode.tap(); await flush(); mode.events.start();
   mode.events.result({ isFinal: true, results: [{ transcript: 'ordinary website question' }] }); mode.events.end(); await flush();
   assert.equal(mode.calls.ai, 1, 'normal chat retains AI flow after leaving web mode'); mode.unmount();
+  const catchy={id:'catchy-id',name:'Catchy Decors',status:'active',website:'www.catchydecors.in',services:['SEO']};
+  const action=harness(granted,granted,35,catchy);action.tap();await flush();action.events.start();action.events.result({isFinal:true,results:[{transcript:'Catchy Decors website upgrade pannanum'}]});action.events.end();await flush();
+  assert.equal(action.calls.ai,0,'action handoff precedes normal AI advice');assert.ok(action.find('Open Web Development workspace'),'detailed controls remain behind compact launcher');assert.ok(action.find('Return to normal assistant chat'));
+  assert.equal(action.find('Selected Web Development mode').props.children.join(''),'Mode: UPGRADE_EXISTING');
+  const scroll=action.find('Assistant scrollable content');assert.equal(scroll.props.style.flexGrow,0);assert.equal(scroll.props.style.flexShrink,1);assert.equal(scroll.props.keyboardShouldPersistTaps,'handled');
+  assert.equal(action.find('Supported static website types'),undefined,'upgrade does not reserve a website-type area');
+  const nodes=node=>!node||typeof node!=='object'?[]:[node,...[node.props?.children].flat(Infinity).flatMap(nodes)];
+  assert.equal(nodes(action.render()).filter(n=>n.type==='WebDevelopmentPanel').length,0,'detailed workspace is absent from launcher');
+  action.find('Open Web Development workspace').props.onPress();
+  const modal=nodes(action.render()).find(n=>n.type==='Modal');assert.ok(modal);assert.equal(nodes(modal).filter(n=>n.type==='WebDevelopmentPanel').length,1);
+  action.find('Return to compact assistant').props.onPress();assert.equal(nodes(action.render()).filter(n=>n.type==='WebDevelopmentPanel').length,0);
+  action.chat();action.tap();await flush();action.events.start();action.events.result({isFinal:true,results:[{transcript:'hello'}]});action.events.end();await flush();assert.equal(action.calls.ai,1,'normal chat after action handoff retains AI');action.unmount();
+  const create=harness(granted,granted,35,catchy);create.tap();await flush();create.events.start();create.events.result({isFinal:true,results:[{transcript:'website create pannu'}]});create.events.end();await flush();
+  assert.equal(create.calls.ai,0);assert.equal(create.find('Selected Web Development mode').props.children.join(''),'Mode: CREATE_NEW');assert.ok(create.find('Supported static website types'));assert.ok(create.find('Website type: Product showcase (static; no checkout)'));
+  create.find('Website type: Business / Corporate').props.onPress();create.find('Open Web Development workspace').props.onPress();const panel=nodes(create.render()).find(n=>n.type==='WebDevelopmentPanel');assert.equal(panel.props.handoff.websiteType,'BUSINESS');assert.equal(panel.props.handoff.clientId,catchy.id);create.find('Return to compact assistant').props.onPress();create.chat();create.tap();await flush();create.events.start();create.events.result({isFinal:true,results:[{transcript:'Hi'}]});create.events.end();await flush();assert.equal(create.calls.ai,1,'CREATE_NEW back to chat accepts real default client schema');create.switchClient({...catchy,id:'other-client',name:'Other client'});create.tap();await flush();create.events.start();create.events.result({isFinal:true,results:[{transcript:'Hi'}]});create.events.end();await flush();assert.equal(create.calls.ai,2,'client switch sends history matching new stable ID');create.unmount();
+  const discussion=harness(granted,granted,35,catchy);discussion.tap();await flush();discussion.events.start();discussion.events.result({isFinal:true,results:[{transcript:'website speed improve panna idea sollu'}]});discussion.events.end();await flush();assert.equal(discussion.calls.ai,1,'discussion remains normal AI');assert.ok(discussion.find('Enter Web Development mode'));discussion.unmount();
+  const verified=harness(granted,granted,35,{...catchy,productsServices:['Fixture verified offering A']});
+  async function ask(test,transcript){test.tap();await flush();test.events.start();test.events.result({isFinal:true,results:[{transcript}]});test.events.end();await flush();}
+  await ask(verified,'Catchy Decors enna services panranga?');assert.match(verified.calls.reply,/Fixture verified offering A/);assert.deepEqual(verified.calls.context.productsServices,['Fixture verified offering A']);assert.ok(!verified.calls.reply.includes('SEO'));
+  verified.switchClient({...catchy,id:'client-b',name:'Another client',productsServices:['Fixture verified offering B']});await ask(verified,'avanga services?');assert.match(verified.calls.reply,/Fixture verified offering B/);assert.ok(!verified.calls.reply.includes('offering A'));assert.equal(verified.calls.history.length,0,'switch removes prior-client turns');
+  verified.switchClient({...catchy,id:'client-c',name:'Missing offerings client'});await ask(verified,'What are their services?');assert.match(verified.calls.reply,/not supplied/);assert.ok(!/offering A|offering B/.test(verified.calls.reply));verified.unmount();
   console.log('PASS: component mic preparation, permission reuse, cancellation, exactly-once submission and explicit Web Development mode switching');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

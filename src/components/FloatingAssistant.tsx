@@ -4,12 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { forwardRef, memo, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Animated, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View, StyleSheet, useWindowDimensions } from 'react-native';
+import { Animated, AppState, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View, StyleSheet, useWindowDimensions } from 'react-native';
+import { webDevelopmentIntent } from '../assistant/webDevelopmentIntent';
 import { requestAgencyDraft as askOneLeadQAgent } from '../services/agencyDraft';
 import { loadClients, loadCurrentClientId } from '../storage/clientStorage';
-import { AssistantReaction, reactionVisuals, readableReply, requestReaction, resolveReaction, responseReaction } from '../assistant/reactions';
+import { AssistantReaction, reactionVisuals, readableReply, spokenReply, requestReaction, resolveReaction, responseReaction } from '../assistant/reactions';
+import { ConversationMemory } from '../assistant/ConversationMemory';
 import { VoiceSession } from '../assistant/VoiceSession';
 import { ASSISTANT_GREETING, getAssistantSpeechOptions } from '../assistant/speechVoice';
+import { WEBSITE_TYPES } from './webDevelopmentWebsiteTypes';
 import WebDevelopmentPanel, { type WebSessionTokenProvider } from './WebDevelopmentPanel';
 
 const SLEEP_AFTER_MS = 60000;
@@ -37,9 +40,14 @@ const AssistantMascot = memo(function AssistantMascot({ reaction, facingLeft = f
 });
 
 export type FloatingAssistantHandle = { handleScreenTouch: () => void };
-export type FloatingAssistantProps = { getWebDevelopmentSessionToken?: WebSessionTokenProvider; compactDock?: boolean; wakeSignal?: string };
-const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantProps>(function FloatingAssistant({ getWebDevelopmentSessionToken, compactDock = false, wakeSignal }, ref) {
+export type FloatingAssistantProps = { getWebDevelopmentSessionToken?: WebSessionTokenProvider; compactDock?: boolean; wakeSignal?: string; motionPaused?: boolean };
+const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantProps>(function FloatingAssistant({ getWebDevelopmentSessionToken, compactDock = false, wakeSignal, motionPaused = false }, ref) {
   const [open, setOpen] = useState(false);
+  const [webWorkspaceOpen,setWebWorkspaceOpen]=useState(false);
+  const [webHandoff,setWebHandoff]=useState<{clientId:string;mode:'CREATE_NEW'|'UPGRADE_EXISTING';intent:string;nonce:number;websiteType?:string}>();
+  const [selectedClient,setSelectedClient]=useState<{id:string;name:string}|null>(null);
+  const visibleClient=useRef<string|null>(null);
+  const [webCommand,setWebCommand]=useState<{text:string;nonce:number;clientId:string}>();
   const [webMode, setWebMode] = useState(false);
   const webModeRef = useRef(false);
   const [textMode, setTextMode] = useState(false);
@@ -71,6 +79,7 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
   const ttsGeneration = useRef(0);
   const request = useRef<AbortController | null>(null);
   const voice = useRef(new VoiceSession()).current;
+  const conversation = useRef(new ConversationMemory()).current;
   const recognitionEnd = useRef({ reason: 'native end (endpoint/platform reason not exposed)', startedAt: 0, speechEndObserved: false });
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const walkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -131,7 +140,7 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
         setOutcome(previous => previous === 'result' ? 'success' : previous);
         wake();
       };
-      const plain = readableReply(text);
+      const plain = spokenReply(text);
       const chunks = plain.match(/[\s\S]{1,3500}/g) ?? [];
       let index = 0;
       const speakNext = () => {
@@ -150,7 +159,7 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
   }
 
   async function send(value = input) {
-    if (webModeRef.current) return;
+    if (webModeRef.current) { if(value.trim() && openRef.current && activeRef.current){const epoch=lifecycle.current;try{const clientId=await loadCurrentClientId();if(valid(epoch)&&webModeRef.current){setWebCommand({text:value.trim(),nonce:Date.now(),clientId:clientId||''});setInput('');}}catch{if(valid(epoch))setNotice('Unable to load the selected client.');}}return; }
     const q = value.trim();
     if (!q || sending.current || voiceStarting.current || voice.current || !openRef.current || !activeRef.current) return;
     // Set synchronously before any await; renders cannot protect against repeated events.
@@ -173,17 +182,28 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
       const clients = id ? await loadClients() : [];
       if (!valid(epoch) || controller.signal.aborted) return;
       const client = clients.find(item => item.id === id && item.status === 'active');
+      const clientId = client?.id || null;
+      setSelectedClient(client?{id:client.id,name:client.name}:null);visibleClient.current=clientId;
+      const history = conversation.forClient(clientId);
+      const routing = resolveAgencyIntent(q);
+      const handoff=webDevelopmentIntent(q,history);
+      if(handoff && routing.kind !== 'clarify' && routing.kind !== 'unavailable'){webModeRef.current=true;setWebMode(true);setWebWorkspaceOpen(false);setWebHandoff({clientId:clientId||'',...handoff,nonce:Date.now()});setNotice('Website request ready. Review the selected client and configured project in the workspace. No files have changed.');void speak('Website workflow ready. Review the selected client and configured project. No files have changed.',epoch);return;}
       const result = await askOneLeadQAgent(q, client ? {
+        id: client.id,
         name: client.name, businessType: client.businessType, website: client.website,
-        location: client.location, services: client.services, notes: client.notes,
-      } : undefined, controller.signal);
-      if (!valid(epoch)) return;
+        location: client.location, services: client.services, oneLeadQServices:client.services, productsServices:client.productsServices, phone:client.phone,email:client.email,notes: client.notes,
+      } : undefined, controller.signal, history);
+      const currentId=await loadCurrentClientId();
+      if (!valid(epoch)||controller.signal.aborted) return;
+      if((currentId||null)!==clientId){conversation.forClient(currentId||null);setMessage('Selected client changed. Please send your request again.');return;}
+      if(result.handoff?.kind==='web-development' && result.handoff.clientId===clientId){webModeRef.current=true;setWebMode(true);setWebWorkspaceOpen(false);setWebHandoff({clientId:clientId||'',mode:result.handoff.mode,intent:result.handoff.intent,nonce:Date.now()});setNotice(result.reply||'Review the selected client and configured project.');if(result.reply)void speak(result.reply,epoch);return;}
       if (result.clarificationRequired || result.unavailable) { setMessage(result.reply || 'Choose one service to continue.'); setOutcome('alert'); if(result.reply)void speak(result.reply,epoch); return; }
       if (!result.reply?.trim()) throw new Error('OneLeadQ AI returned an empty reply. Please try again.');
       const reply = readableReply(result.reply);
+      conversation.append(clientId, q, reply);
       setMessage(reply);
       setOutcome(responseReaction(reply));
-      void speak(reply, epoch);
+      void speak(result.reply, epoch);
     } catch {
       if (valid(epoch) && !controller.signal.aborted) {
         setOutcome('error');
@@ -433,6 +453,8 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
     return () => { stopped = true; animation?.stop(); walkX.stopAnimation(); if (walkTimer.current) clearTimeout(walkTimer.current); };
   }, [compactDock, open, active, sleeping, moving, travel, walkX]);
 
+  useEffect(()=>{if(!open)return;let disposed=false;void(async()=>{try{const id=await loadCurrentClientId();const clients=await loadClients();if(disposed)return;const client=clients.find(c=>c.id===id && c.status==='active');const next=client?.id||null;if(visibleClient.current!==next){conversation.forClient(next);setMessage(ASSISTANT_GREETING);setWebCommand(undefined);setWebHandoff(undefined);setWebWorkspaceOpen(false);}visibleClient.current=next;setSelectedClient(client?{id:client.id,name:client.name}:null);}catch{if(!disposed)setNotice('Unable to load the selected client.');}})();return()=>{disposed=true;};},[open,active]);
+
   useEffect(() => { if (wakeSignal !== undefined && activeRef.current) wake(); }, [wakeSignal]);
 
   useImperativeHandle(ref, () => ({ handleScreenTouch() {
@@ -464,25 +486,40 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
   const voiceBusy = busy || starting;
   return <View pointerEvents="box-none" style={s.layer}>
     {open && <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={12}
-      style={[s.keyboardLayer, { paddingBottom: 212 }]} pointerEvents="box-none">
+      style={[s.keyboardLayer, { paddingBottom: Math.min(212, height * 0.22) }]} pointerEvents="box-none">
       <View onTouchStart={() => assistantLog('panel touch')} style={[s.panel, { width: Math.min(340, width - 24), maxHeight: height * 0.68 }]}>
         <View style={s.head}><View><Text style={s.title}>OneLeadQ Assistant</Text>
           <Text style={[s.state, { color: ui.accent }]} accessibilityLiveRegion="polite">{starting ? 'Preparing to listen…' : ui.label}</Text></View>
           <Pressable accessibilityRole="button" accessibilityLabel="Close assistant" onPress={toggleAssistant} style={s.close}><Ionicons name="close" size={20} /></Pressable></View>
+        <ScrollView key={webMode ? "web-launcher" : "normal-chat"} accessibilityLabel="Assistant scrollable content" style={s.contentScroll} contentContainerStyle={s.contentBody} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         {!!notice && <Text style={s.voiceHint} accessibilityLiveRegion="polite">{notice}</Text>}
+        {!webMode && <Pressable accessibilityRole="button" accessibilityLabel="Clear conversation history"
+          onPress={() => { cancelActivity('conversation cleared'); conversation.clear(); setMessage(ASSISTANT_GREETING); setOutcome('idle'); setNotice('Recent conversation cleared.'); wake(); }}
+          style={s.keyboardButton}><Text style={s.keyboardText}>Clear conversation</Text></Pressable>}
         <Pressable accessibilityRole="button" accessibilityLabel={webMode ? 'Return to normal assistant chat' : 'Enter Web Development mode'}
           onPress={() => {
-            cancelActivity('assistant mode changed');
+            cancelActivity('assistant mode changed');setWebCommand(undefined);setWebHandoff(undefined);setWebWorkspaceOpen(false);
             webModeRef.current = !webModeRef.current;
             setWebMode(webModeRef.current);
             setNotice(''); setOutcome('idle'); wake();
           }} style={s.keyboardButton}><Text style={s.keyboardText}>{webMode ? 'Back to normal chat' : 'Web Development'}</Text></Pressable>
-        <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
-          {webMode ? <WebDevelopmentPanel active={active} getSessionToken={getWebDevelopmentSessionToken} /> : <><View style={s.reply}><View style={s.replyMascot}><AssistantMascot reaction={reaction} active={active} /></View>
+        <Text style={s.voiceHint}>Current client: {selectedClient?.name||'No active client selected'}</Text>
+          {webMode ? <View style={s.webLauncher}>
+            <Text accessibilityLabel="Selected Web Development mode" style={s.webText}>Mode: {webHandoff?.mode || 'Choose a mode'}</Text>
+            <View style={s.actions}>{(['CREATE_NEW','UPGRADE_EXISTING'] as const).map(mode => <Pressable key={mode} accessibilityRole="button" accessibilityLabel={mode==='CREATE_NEW'?'New Website':'Upgrade Existing Website'} accessibilityState={{selected:webHandoff?.mode===mode}} onPress={()=>{setWebHandoff({clientId:selectedClient?.id||'',mode,intent:mode==='CREATE_NEW'?'create':'upgrade',nonce:Date.now()});}} style={s.chip}><Text style={s.chipText}>{mode==='CREATE_NEW'?'New Website':'Upgrade Existing Website'}</Text></Pressable>)}</View>
+            <Pressable accessibilityRole="button" accessibilityLabel="Open Web Development workspace" onPress={()=>setWebWorkspaceOpen(true)} style={s.keyboardButton}><Text style={s.keyboardText}>Open Web Development Workspace</Text></Pressable>
+            {webHandoff?.mode==='CREATE_NEW' && <>
+              <Text style={s.webText}>STATIC_HTML website types</Text>
+              <Text style={s.webText}>Static presentation only; no checkout, booking engine, publishing system or SaaS app.</Text>
+              <ScrollView horizontal nestedScrollEnabled accessibilityLabel="Supported static website types" style={s.typeScroll} keyboardShouldPersistTaps="handled">
+                {WEBSITE_TYPES.map(type=><Pressable key={type.id} accessibilityRole="button" accessibilityLabel={`Website type: ${type.label}`} accessibilityState={{selected:webHandoff.websiteType===type.id}} onPress={()=>setWebHandoff({...webHandoff,websiteType:type.id,nonce:Date.now()})} style={[s.typeChip,webHandoff.websiteType===type.id&&s.typeSelected]}><Text style={s.chipText}>{type.label}</Text></Pressable>)}
+              </ScrollView>
+            </>}
+            <Text style={s.webText}>Select the configured project in the workspace. Analysis and all approvals stay there.</Text>
+          </View> : <><View style={s.reply}><View style={s.replyMascot}><AssistantMascot reaction={reaction} active={active} /></View>
             <Text selectable style={s.replyText}>{message}</Text></View>
           {!!transcript && <Text selectable style={s.voiceHint}>You said: {transcript}</Text>}</>}
-        </ScrollView>
-        {!webMode && <>
+        {<>
         {talking && <Pressable accessibilityRole="button" onPress={stopSpeech} style={s.keyboardButton}><Text style={s.keyboardText}>Stop speaking</Text></Pressable>}
         {!textMode ? <View style={s.voiceBox}>
           <Pressable accessibilityRole="button" accessibilityLabel={listening ? 'Finish voice recording' : 'Start voice listening'}
@@ -509,9 +546,18 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
               onPress={() => void send()} style={[s.send, (busy || !input.trim()) && { opacity: 0.5 }]}><Ionicons name="arrow-up" size={20} color="white" /></Pressable></View>
         </View>}
         </>}
+        </ScrollView>
       </View>
     </KeyboardAvoidingView>}
-    {compactDock ? <RoamingAssistant active={!open && active} awake={!sleeping} onOpen={toggleAssistant} onWake={wake}>
+    {open && webWorkspaceOpen && <Modal visible animationType="slide" onRequestClose={()=>setWebWorkspaceOpen(false)}>
+      <KeyboardAvoidingView style={s.workspace} behavior={Platform.OS==='ios'?'padding':'height'}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Return to compact assistant" onPress={()=>setWebWorkspaceOpen(false)} style={s.keyboardButton}><Text style={s.keyboardText}>Back to assistant</Text></Pressable>
+        <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={s.workspaceBody}>
+          <WebDevelopmentPanel handoff={webHandoff} onCommandConsumed={()=>setWebCommand(undefined)} command={webCommand} active={active} getSessionToken={getWebDevelopmentSessionToken} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Modal>}
+    {compactDock ? <RoamingAssistant active={!open && active} awake={!sleeping} onOpen={toggleAssistant} onWake={wake} paused={motionPaused}>
       {(running, walking, left) => <AssistantMascot reaction={reaction === 'walking' ? (walking ? (running ? 'running' : 'walking') : 'idle') : reaction} active={active && !sleeping} facingLeft={left} />}
     </RoamingAssistant> : <Animated.View pointerEvents="box-none" style={[s.walker, compactDock && { bottom: 8 }, { transform: [{ translateX: open ? 0 : walkX }] }]}>
       <Pressable accessibilityRole="button" accessibilityLabel={open ? 'Close OneLeadQ assistant' : 'Open OneLeadQ assistant'} onPress={toggleAssistant} style={[s.bot, compactDock && { width: 56, height: 56 }]}>
@@ -530,6 +576,15 @@ const s=StyleSheet.create({
  mascot:{width:'100%',height:'100%'},
  keyboardLayer:{zIndex:2,position:'absolute',top:0,right:0,bottom:0,left:0,justifyContent:'flex-end',alignItems:'flex-end',paddingRight:12,paddingBottom:212},
  panel:{flexShrink:1,backgroundColor:'#FFFDF8',borderRadius:22,padding:14,borderWidth:1,borderColor:'#E5D8A8',shadowColor:'#000',shadowOpacity:.18,shadowRadius:12,shadowOffset:{width:0,height:5},elevation:24},
+ contentScroll:{flexGrow:0,flexShrink:1},
+ contentBody:{paddingBottom:8},
+ webLauncher:{alignItems:'stretch',gap:8,paddingVertical:8},
+ webText:{color:'#26312E',lineHeight:19},
+ typeScroll:{flexGrow:0},
+ typeChip:{maxWidth:240,marginRight:8,borderWidth:1,borderColor:'#D8CFB2',borderRadius:14,padding:10,justifyContent:'center'},
+ typeSelected:{backgroundColor:'#E9F1EE',borderColor:'#0B5D4B'},
+ workspace:{flex:1,paddingTop:40,paddingHorizontal:12,backgroundColor:'#FFFDF8'},
+ workspaceBody:{paddingBottom:40},
  head:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},
  title:{fontSize:16,fontWeight:'900',color:'#0B5D4B'},
  state:{fontSize:11,fontWeight:'800',marginTop:2},

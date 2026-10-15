@@ -72,3 +72,7 @@ export function readableReply(text: string): string {
     .replace(/\*\*([^*]+)\*\*/g, '$1').replace(/__([^_]+)__/g, '$1')
     .replace(/\x60([^\x60]+)\x60/g, '$1').replace(/^\s*[-*]\s+/gm, '• ').trim();
 }
+export function spokenReply(text: string): string {
+  const plain = readableReply(text.replace(/\x60{3}[\s\S]*?\x60{3}/g, ' Code is shown in the reply. ')).replace(/https?:\/\/\S+/g, 'link shown in the reply');
+  return plain.length <= 1000 ? plain : plain.slice(0, 900).replace(/\s+\S*$/, '') + '. The full reply is shown on screen.';
+}

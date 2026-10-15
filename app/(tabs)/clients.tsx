@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import {
-  Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+  Alert, FlatList, Modal, KeyboardAvoidingView, Platform, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { defaultClients } from '../../src/data/defaultClients';
@@ -22,6 +22,9 @@ const blank = (): Client => ({
 });
 
 export default function Clients() {
+  const editorScroll=useRef<ScrollView>(null);
+  const notesFocused=useRef(false);
+  useEffect(()=>{const subscription=Keyboard.addListener('keyboardDidShow',()=>{if(notesFocused.current)editorScroll.current?.scrollToEnd({animated:true});});return()=>subscription.remove();},[]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
@@ -57,10 +60,12 @@ export default function Clients() {
 
   function saveEditor() {
     if (!editor?.name.trim()) return Alert.alert('Client name required','Enter a business/client name.');
+    const productsServices = (editor.productsServices || []).map(value => value.trim()).filter(Boolean);
+    if (productsServices.length > 20 || productsServices.some(value => value.length > 150)) return Alert.alert('Check verified offerings','Enter at most 20 offerings, each no longer than 150 characters.');
     const now = new Date().toISOString();
     const isNew = !editor.id;
     const saved: Client = {
-      ...editor, name: editor.name.trim(),
+      ...editor, name: editor.name.trim(), productsServices,
       id: editor.id || `client-${Date.now()}`,
       createdAt: editor.createdAt || now, updatedAt: now,
     };
@@ -154,8 +159,9 @@ export default function Clients() {
 )}
           <Text style={s.section}>Business details</Text>
           <Info label="Contact" value={selected.contactName}/><Info label="Phone" value={selected.phone}/><Info label="Email" value={selected.email}/><Info label="Website" value={selected.website}/><Info label="Location" value={selected.location}/>
-          <Text style={s.section}>Services</Text>
+          <Text style={s.section}>OneLeadQ services assigned to this client</Text>
           <View style={s.chips}>{selected.services.length?selected.services.map(x=><View key={x} style={s.chip}><Text style={s.chipText}>{x}</Text></View>):<Text style={s.muted}>No services selected.</Text>}</View>
+          <Text style={s.section}>Verified client-owned products / services</Text><Text style={s.notes}>{selected.productsServices?.join('\n') || 'Not supplied. The assistant must ask for verified offerings.'}</Text>
           <Text style={s.section}>Notes</Text><Text style={s.notes}>{selected.notes||'No notes yet.'}</Text>
           {selected.status==='active'
             ? <Pressable style={s.archiveBtn} onPress={()=>archive(selected)}><Text style={s.archiveText}>Archive client</Text></Pressable>
@@ -167,7 +173,8 @@ export default function Clients() {
     <Modal visible={!!editor} animationType="slide" onRequestClose={()=>setEditor(null)}>
       <SafeAreaView style={s.modalPage}>
         <View style={s.modalTop}><Pressable onPress={()=>setEditor(null)}><Text style={s.cancel}>Cancel</Text></Pressable><Text style={s.modalTitle}>{editor?.id?'Edit client':'Add client'}</Text><Pressable onPress={saveEditor}><Text style={s.edit}>Save</Text></Pressable></View>
-        {editor&&<ScrollView contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
+        <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':'height'} keyboardVerticalOffset={0}>
+        {editor&&<ScrollView ref={editorScroll} automaticallyAdjustKeyboardInsets keyboardDismissMode="interactive" contentContainerStyle={[s.form,{flexGrow:1,paddingBottom:120}]} keyboardShouldPersistTaps="handled">
           <Field label="Client / business name *" value={editor.name} onChangeText={v=>setEditor({...editor,name:v})}/>
           <Field label="Business type" value={editor.businessType} onChangeText={v=>setEditor({...editor,businessType:v})}/>
           <Field label="Contact person" value={editor.contactName} onChangeText={v=>setEditor({...editor,contactName:v})}/>
@@ -175,18 +182,20 @@ export default function Clients() {
           <Field label="Email" value={editor.email} keyboardType="email-address" onChangeText={v=>setEditor({...editor,email:v})}/>
           <Field label="Website" value={editor.website} onChangeText={v=>setEditor({...editor,website:v})}/>
           <Field label="Location" value={editor.location} onChangeText={v=>setEditor({...editor,location:v})}/>
-          <Text style={s.fieldLabel}>Services</Text>
+          <Text style={s.fieldLabel}>OneLeadQ services assigned to this client</Text>
           <View style={s.chips}>{serviceOptions.map(x=>{const on=editor.services.includes(x);return <Pressable key={x} style={[s.choice,on&&s.choiceOn]} onPress={()=>setEditor({...editor,services:on?editor.services.filter(y=>y!==x):[...editor.services,x]})}><Text style={[s.choiceText,on&&s.choiceTextOn]}>{x}</Text></Pressable>})}</View>
-          <Field label="Notes" value={editor.notes} multiline onChangeText={v=>setEditor({...editor,notes:v})}/>
+          <Field label="Verified client-owned products / services (one per line)" value={(editor.productsServices || []).join("\n")} multiline onChangeText={v=>setEditor({...editor,productsServices:v.split("\n")})}/>
+          <Field label="Notes" value={editor.notes} multiline onFocus={()=>{notesFocused.current=true;editorScroll.current?.scrollToEnd({animated:true});}} onBlur={()=>{notesFocused.current=false;}} onChangeText={v=>setEditor({...editor,notes:v})}/>
           <Pressable style={s.saveBtn} onPress={saveEditor}><Text style={s.saveText}>Save client</Text></Pressable>
         </ScrollView>}
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
   </SafeAreaView>;
 }
 
 function Info({label,value}:{label:string;value:string}) { return <View style={s.info}><Text style={s.infoLabel}>{label}</Text><Text style={s.infoValue}>{value || "-"}</Text></View>; }
-function Field({label,...props}:{label:string;value:string;onChangeText:(v:string)=>void;keyboardType?:any;multiline?:boolean}) { return <View style={s.field}><Text style={s.fieldLabel}>{label}</Text><TextInput {...props} placeholderTextColor="#91A09A" style={[s.input,props.multiline&&s.multi]} autoCapitalize={props.keyboardType==='email-address'?'none':'sentences'}/></View>; }
+function Field({label,...props}:{label:string;value:string;onChangeText:(v:string)=>void;keyboardType?:any;multiline?:boolean;onFocus?:()=>void;onBlur?:()=>void}) { return <View style={s.field}><Text style={s.fieldLabel}>{label}</Text><TextInput accessibilityLabel={label} {...props} placeholderTextColor="#91A09A" style={[s.input,props.multiline&&s.multi]} autoCapitalize={props.keyboardType==='email-address'?'none':'sentences'}/></View>; }
 
 const s=StyleSheet.create({
   page:{flex:1,backgroundColor:colors.cream},center:{flex:1,alignItems:'center',justifyContent:'center'},header:{padding:20,paddingBottom:14,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},head:{fontSize:30,fontWeight:'900',color:colors.green},sub:{color:colors.muted,marginTop:3},add:{backgroundColor:colors.green,borderRadius:14,paddingHorizontal:14,paddingVertical:10,flexDirection:'row',alignItems:'center',gap:5},addText:{color:colors.white,fontWeight:'800'},switchRow:{flexDirection:'row',paddingHorizontal:20,gap:10},filter:{paddingHorizontal:15,paddingVertical:9,borderRadius:20,borderWidth:1,borderColor:'#D8D2BA'},filterOn:{backgroundColor:colors.green,borderColor:colors.green},filterText:{color:colors.green,fontWeight:'700'},filterTextOn:{color:colors.white},list:{padding:20,paddingBottom:100},card:{backgroundColor:colors.white,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',alignItems:'center',gap:13},avatar:{width:48,height:48,borderRadius:16,backgroundColor:'#E8E1BE',alignItems:'center',justifyContent:'center'},avatarText:{fontWeight:'900',color:colors.green},cardBody:{flex:1},name:{fontSize:18,fontWeight:'900',color:colors.text},meta:{fontSize:12,color:colors.muted,marginTop:3},services:{color:colors.green2,marginTop:7,lineHeight:19},empty:{alignItems:'center',paddingTop:80,gap:8},emptyTitle:{fontSize:18,fontWeight:'800',color:colors.text},muted:{color:colors.muted},modalPage:{flex:1,backgroundColor:colors.cream},modalTop:{height:58,paddingHorizontal:18,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderBottomWidth:1,borderBottomColor:'#E7E1CE'},modalTitle:{fontSize:17,fontWeight:'900',color:colors.text},edit:{fontWeight:'900',color:colors.green},cancel:{color:colors.muted,fontWeight:'700'},detail:{padding:20,paddingBottom:50},detailHero:{backgroundColor:colors.green,borderRadius:22,padding:22},detailName:{fontSize:27,fontWeight:'900',color:colors.white},detailType:{color:'#D6E3DE',marginTop:5},badge:{alignSelf:'flex-start',backgroundColor:'#FFFFFF20',paddingHorizontal:10,paddingVertical:5,borderRadius:12,marginTop:15},badgeText:{color:colors.gold,fontWeight:'900',fontSize:11},section:{fontSize:17,fontWeight:'900',color:colors.text,marginTop:24,marginBottom:10},info:{backgroundColor:colors.white,padding:14,borderRadius:13,marginBottom:7},infoLabel:{fontSize:11,color:colors.muted,textTransform:'uppercase'},infoValue:{color:colors.text,fontWeight:'700',marginTop:3},chips:{flexDirection:'row',flexWrap:'wrap',gap:8},chip:{backgroundColor:'#E9F1EE',paddingHorizontal:11,paddingVertical:7,borderRadius:12},chipText:{color:colors.green,fontWeight:'700'},notes:{backgroundColor:colors.white,padding:15,borderRadius:14,color:colors.text,lineHeight:21},archiveBtn:{borderWidth:1,borderColor:'#B7791F',padding:15,borderRadius:14,alignItems:'center',marginTop:28},archiveText:{color:'#8A5A12',fontWeight:'900'},restoreBtn:{backgroundColor:colors.green,padding:15,borderRadius:14,alignItems:'center',marginTop:28},restoreText:{color:colors.white,fontWeight:'900'},deleteBtn:{padding:15,alignItems:'center',marginTop:8},deleteText:{color:colors.danger,fontWeight:'900'},form:{padding:20,paddingBottom:50},field:{marginBottom:15},fieldLabel:{color:colors.text,fontWeight:'800',marginBottom:7},input:{backgroundColor:colors.white,borderWidth:1,borderColor:'#DED8C3',borderRadius:14,paddingHorizontal:14,paddingVertical:12,color:colors.text,fontSize:16},multi:{minHeight:95,textAlignVertical:'top'},choice:{borderWidth:1,borderColor:'#D8D2BA',paddingHorizontal:12,paddingVertical:8,borderRadius:13},choiceOn:{backgroundColor:colors.green,borderColor:colors.green},choiceText:{color:colors.green,fontWeight:'700'},choiceTextOn:{color:colors.white},saveBtn:{backgroundColor:colors.green,padding:16,borderRadius:15,alignItems:'center',marginTop:26},saveText:{color:colors.white,fontWeight:'900',fontSize:16},

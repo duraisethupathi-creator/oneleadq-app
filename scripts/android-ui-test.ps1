@@ -2,6 +2,7 @@
  [string]$Adb = 'D:\Android\platform-tools\adb.exe',
  [string]$Device,
  [string]$OutputDirectory = (Join-Path $PSScriptRoot '../reports/android'),
+ [switch]$PauseRoaming,
  [switch]$AIOnly,
  [switch]$Stage16Fixture,
  [switch]$LiveAI
@@ -18,8 +19,9 @@ function AdbCall([string[]]$Arguments) {
  return $value
 }
 function Screen {
- AdbCall -Arguments @('shell','uiautomator','dump','/sdcard/oneleadq-qa.xml') | Out-Null
- [xml]((AdbCall -Arguments @('shell','cat','/sdcard/oneleadq-qa.xml')) -join "`n")
+ . (Join-Path $PSScriptRoot 'android-screen.ps1')
+ $runScreenAdb = { param([string[]]$Arguments) AdbCall -Arguments $Arguments }
+ Read-OneLeadQScreenXml -RunAdb $runScreenAdb
 }
 function Find($Pattern) {
  $xml=Screen
@@ -59,6 +61,7 @@ try {
  . (Join-Path $PSScriptRoot 'android-device-discovery.ps1')
  $runAdb = { param([string[]]$Arguments) & $Adb @Arguments }
  $Device = Resolve-OneLeadQAndroidDevice -RunAdb $runAdb -RequestedDevice $Device
+ if($PauseRoaming){AdbCall -Arguments @('shell','am','start','-a','android.intent.action.VIEW','-d','oneleadq:///?qaPauseAssistant=1','com.oneleadq.app') | Out-Null;Start-Sleep -Seconds 1}
  AdbCall -Arguments @('shell','monkey','-p','com.oneleadq.app','-c','android.intent.category.LAUNCHER','1') | Out-Null
  Start-Sleep -Seconds 2
  Check 'Application launch' 'OneLeadQ|Home|Clients'
@@ -98,6 +101,7 @@ try {
  Record 'Recent Android crash scan' $(if($count){'FAIL'}else{'PASS'}) "$count fatal exception signatures in bounded system log (not app-specific)"
 } catch { Record 'Android workflow' BLOCKED $_.Exception.Message }
 finally {
+ if($PauseRoaming -and $Device){try{AdbCall -Arguments @('shell','am','start','-a','android.intent.action.VIEW','-d','oneleadq:///?qaPauseAssistant=0','com.oneleadq.app') | Out-Null}catch{Record 'Restore assistant motion' BLOCKED 'Unable to clear development-only motion pause'}}
  $results | ConvertTo-Json -Depth 4 | Set-Content -Encoding UTF8 (Join-Path $OutputDirectory 'results.json')
 }
 if(@($results | Where-Object status -eq 'FAIL').Count){exit 1}
