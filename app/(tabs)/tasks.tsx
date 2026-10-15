@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useMemo, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { loadClients } from '../../src/storage/clientStorage';
@@ -15,11 +15,13 @@ const labels:Record<Filter,string>={today:'Today',upcoming:'Upcoming',pending:'P
 const blank=():AgencyTask=>({id:'',title:'',clientId:'',clientName:'',dueDate:new Date().toISOString().slice(0,10),priority:'medium',status:'pending',approval:'draft',notes:'',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
 
 export default function Tasks(){
+ const { view } = useLocalSearchParams<{view?:string}>();
  const [tasks,setTasks]=useState<AgencyTask[]>([]); const [clients,setClients]=useState<Client[]>([]);
  const [filter,setFilter]=useState<Filter>('today'); const [editor,setEditor]=useState<AgencyTask|null>(null); const [selected,setSelected]=useState<AgencyTask|null>(null); const [loading,setLoading]=useState(true);
 useFocusEffect(
   useCallback(() => {
     let active = true;
+    if(typeof view === 'string' && filters.includes(view as Filter)) setFilter(view as Filter);
 
     const refreshTasks = async () => {
       try {
@@ -53,7 +55,7 @@ useFocusEffect(
     return () => {
       active = false;
     };
-  }, [])
+  }, [view])
 ); const today=new Date().toISOString().slice(0,10);
  const visible=useMemo(()=>tasks.filter(t=>filter==='today'?t.dueDate===today&&t.status!=='completed':filter==='upcoming'?t.dueDate>today&&t.status!=='completed':filter==='pending'?['pending','in_progress'].includes(t.status):filter==='approval'?t.approval==='waiting':t.status==='completed'),[tasks,filter,today]);
  async function commit(next:AgencyTask[]){setTasks(next);try{await saveTasks(next);}catch{Alert.alert('Save failed','Task change could not be saved.');}}

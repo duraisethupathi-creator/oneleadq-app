@@ -1,6 +1,8 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
+  TextInput,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +14,7 @@ import { loadContent } from "../../src/storage/contentStorage";
 import { loadTasks } from "../../src/storage/taskStorage";
 import { loadSEOIssues } from "../../src/storage/seoStorage";
 import { loadLeads } from "../../src/storage/leadStorage";
+import { queueAICommand } from "../../src/assistant/commandHandoff";
 import { colors } from "../../src/theme";
 import { loadClients, loadCurrentClientId } from "../../src/storage/clientStorage";
 
@@ -25,9 +28,20 @@ export default function Dashboard() {
   const [openLeads, setOpenLeads] = useState(0);
   const [currentClientName, setCurrentClientName] = useState("No client selected");
 
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [command, setCommand] = useState('');
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState('');
+  const [refresh, setRefresh] = useState(0);
+  function openCommand(text: string) {
+    if (!text.trim()) return;
+    queueAICommand(text, selectedClientId);
+    router.push('/(tabs)/ai');
+  }
   useFocusEffect(
     useCallback(() => {
       let active = true;
+      setDashboardLoading(true); setDashboardError('');
 
       Promise.all([
         loadTasks(),
@@ -40,6 +54,7 @@ export default function Dashboard() {
         .then(([tasks, content, seo, leads, clients, currentClientId]) => {
           if (!active) return;
 
+          setSelectedClientId(clients.some(client => client.id === currentClientId && client.status === "active") ? currentClientId : null);
           setCurrentClientName(clients.find(client => client.id === currentClientId && client.status === "active")?.name || "No client selected");
           const today = new Date().toISOString().slice(0, 10);
 
@@ -75,29 +90,35 @@ export default function Dashboard() {
             ).length
           );
         })
-        .catch(() => { if (active) setCurrentClientName("Client unavailable"); });
+        .catch(() => { if (active) { setCurrentClientName("Client unavailable"); setDashboardError("Unable to load saved records. Try again / மீண்டும் முயற்சி"); } })
+        .finally(() => { if (active) setDashboardLoading(false); });
 
       return () => {
         active = false;
       };
-    }, [])
+    }, [refresh])
   );
 
+  const count = (value: number) => dashboardLoading ? "…" : dashboardError ? "—" : String(value);
   const metrics = [
-    ["Today Tasks", String(todayTasks)],
-    ["Approvals", String(approvals)],
-    ["Scheduled", String(scheduled)],
-    ["SEO Issues", String(seoIssues)],
-    ["Open Leads", String(openLeads)],
+    ["Today Tasks", count(todayTasks)],
+    ["Approvals", count(approvals)],
+    ["Scheduled", count(scheduled)],
+    ["SEO Issues", count(seoIssues)],
+    ["Open Leads", count(openLeads)],
   ];
 
   const actions = [
+    { label: 'Create Website / இணையதளம்', go: () => openCommand('Create a website') },
+    { label: 'Create Ads / விளம்பரம்', go: () => openCommand('Help me choose Meta Ads or Google Ads') },
+    { label: 'Improve SEO / தேடல்', go: () => router.push('/seo') },
+    { label: 'Manage Clients / வாடிக்கையாளர்', go: () => router.push('/(tabs)/clients') },
     {
-      label: "+ Client",
+      label: "+ Client / சேர்",
       go: () => router.push("/(tabs)/clients"),
     },
     {
-      label: "Create Content",
+      label: "Create Content / உள்ளடக்கம்",
       go: () => router.push("/content-studio"),
     },
     {
@@ -135,7 +156,19 @@ export default function Dashboard() {
         </Text>
       </View>
 
-      <Text style={s.title}>Overview</Text>
+      <View style={s.ai}>
+        <Text style={s.aiTitle}>What would you like to do? / என்ன செய்யலாம்?</Text>
+        <TextInput accessibilityLabel="Dashboard AI command" value={command} onChangeText={setCommand}
+          placeholder="Example: Create a website" placeholderTextColor="#5b6965" maxLength={3000}
+          style={{backgroundColor:colors.white,color:colors.text,borderRadius:12,padding:14,minHeight:52,marginTop:12}} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Continue to AI" disabled={!command.trim()} onPress={() => openCommand(command)}
+          style={{minHeight:48,justifyContent:'center',opacity:command.trim()?1:0.5}}><Text style={s.aiButton}>Continue / தொடர்க</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Choose current client" onPress={() => router.push('/(tabs)/clients')} style={{minHeight:48,justifyContent:'center'}}><Text style={s.aiText}>Client / வாடிக்கையாளர்: {currentClientName}</Text></Pressable>
+      </View>
+      <Text style={s.title}>Overview / இன்று</Text>
+      {dashboardLoading && <ActivityIndicator accessibilityLabel="Loading dashboard" />}
+      {!!dashboardError && <View style={{paddingHorizontal:20}}><Text accessibilityRole="alert" style={{color:colors.danger}}>{dashboardError}</Text><Pressable accessibilityRole="button" accessibilityLabel="Retry dashboard loading" onPress={() => setRefresh(value => value + 1)} style={{minHeight:48,justifyContent:'center'}}><Text style={{color:colors.green}}>Retry / மீண்டும்</Text></Pressable></View>}
+      <Text style={{color:colors.muted,paddingHorizontal:20,marginBottom:12}}>Counts use saved app records; sample records may be included.</Text>
 
       <View style={s.grid}>
         {metrics.map(([k, v]) => (
@@ -147,7 +180,7 @@ export default function Dashboard() {
                 k === "Today Tasks" ||
                 k === "Approvals"
               ) {
-                router.push("/(tabs)/tasks");
+                router.push({ pathname: "/(tabs)/tasks", params: { view: k === "Approvals" ? "approval" : "today" } });
               }
 
               if (k === "Scheduled") {
@@ -175,6 +208,8 @@ export default function Dashboard() {
         {actions.map((x) => (
           <Pressable
             style={s.action}
+            accessibilityRole="button"
+            accessibilityLabel={x.label}
             key={x.label}
             onPress={x.go}
           >

@@ -28,6 +28,7 @@ import {
   checkAIAgentHealth,
 } from "../../src/services/aiAgent";
 
+import { consumeAICommand } from "../../src/assistant/commandHandoff";
 import { colors } from "../../src/theme";
 import WebDevelopmentPanel from "../../src/components/WebDevelopmentPanel";
 import { getWebDevelopmentSessionToken } from "../../src/services/webDevelopmentSession";
@@ -194,6 +195,16 @@ export default function AI() {
   const [webOpen, setWebOpen] = useState(false);
   useFocusEffect(useCallback(() => () => setWebOpen(false), []));
 
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    const command = consumeAICommand();
+    if (command) void loadCurrentClientId().then(id => {
+      if (!active) return;
+      if ((id || null) !== command.clientId) { setReply('Client changed. Review the selected client and enter your request again.'); setAgent(''); return; }
+      setMessage(command.text);
+    }).catch(() => { if (active) { setReply('Unable to load the selected client. Please try again.'); setAgent(''); } });
+    return () => { active = false; };
+  }, []));
   const checkConnection = async () => {
     setLoading(true);
 
