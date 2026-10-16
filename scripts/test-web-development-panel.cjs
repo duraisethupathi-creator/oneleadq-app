@@ -370,6 +370,7 @@ function harness(authenticated = true, persisted = null) {
 
   return {
     calls,
+    fixture(value){Object.assign(workflow,value);},
     handoff(value){incomingHandoff=value;render();},
     command(text,clientId=selectedClient){command={text,clientId,nonce:++commandSequence};render();},
     find,
@@ -701,6 +702,15 @@ async function main() {
   const reopened=harness(true,persisted);reopened.render();await flush();reopened.render();await flush();assert.ok(reopened.find('Create workflow'),'reopening stays on form');assert.equal(reopened.calls.length,0);assert.equal(reopened.find('Configured Web Development project ID').props.value,'');assert.equal(reopened.find('Existing Web Development workflow ID').props.value,'');await reopened.tap('Resume existing workflow');assert.equal(reopened.find('Existing Web Development workflow ID').props.value,'run-1');await reopened.tap('Resume workflow');assert.ok(reopened.find('Start new workflow'),'old workflow remains explicitly resumable');
   await reopened.tap('Start new workflow');reopened.input('Configured Web Development project ID','stage16-create-test');await reopened.tap('Create workflow');assert.equal(reopened.calls.at(-1).projectId,'stage16-create-test');assert.equal(reopened.calls.at(-1).clientId,'stable-client');
   const beforeOtherClient=spoken.calls.length;spoken.command('3 design kaatu','other-client');await flush();assert.equal(spoken.calls.length,beforeOtherClient,'commands are isolated by stable client ID');
+  const history=harness();history.render();await flush();history.render();await flush();
+  const snapshot=JSON.parse(fs.readFileSync('reports/stage16-file-approvals.json','utf8')).finalVerification;
+  history.fixture({id:snapshot.workflowId,state:'VALIDATION_PASSED',mode:'CREATE_NEW',designVariants:snapshot.variants,selectedDesignId:snapshot.designId,designLock:{state:'APPROVED',selectedVariantId:snapshot.designId,revision:1},approvals:snapshot.approvals,plan:snapshot.approvals.map(a=>({file:a.file,afterHash:'verified-fixture-hash',reason:'Already approved fixture'})),filesChanged:snapshot.approvals.map(a=>a.file)});
+  history.input('Existing Web Development workflow ID',snapshot.workflowId);await history.tap('Resume workflow');
+  for(const v of snapshot.variants)assert.ok(history.find('Existing design '+v.id),'validated history keeps all three variant identities visible');
+  assert.ok(history.find('Applied file approvals: 10/10'),'exact applied count visible');
+  for(const a of snapshot.approvals)assert.ok(history.find('File approval '+a.approvalId),'consumed approval identity remains visible');
+  assert.equal(history.find('Generate More Variants'),undefined);assert.equal(history.find('Approve Design'),undefined);assert.equal(history.find('Review approval for selected files'),undefined);
+  assert.ok(history.calls.every(c=>c.action==='refresh'),'history inspection performs GET only');
   console.log(
     'PASS: Web panel explicit client/project, session authentication, file/commit/push confirmations, validation selection, client switch and background abort',
   );

@@ -406,6 +406,17 @@ onPress={() => setMode('UPGRADE_EXISTING')}
           <Button label="Approve Design" disabled={blocked} onPress={()=>void execute('approve-design',{approved:true,variantId:workflow.selectedDesignId})} />
         </>}
       </>}
+      {workflow.mode==='CREATE_NEW' && workflow.designLock && !['REQUIREMENTS_READY','ANALYSIS_COMPLETE','DESIGN_VARIANTS_READY','DESIGN_LOCKED','ARCHITECTURE_READY','CHANGE_PLAN_READY'].includes(state||'') && <View style={styles.card}>
+        <Text style={styles.heading}>Existing design variants</Text>
+        <Text style={styles.text}>Saved history only. The approved design remains locked.</Text>
+        {workflow.designVariants?.map(variant=><View key={'history-'+variant.id}>
+          <Text selectable accessibilityLabel={`Existing design ${variant.id}`} style={styles.text}>{variant.name}{'\n'}Version: {variant.id} | Revision: {variant.revision}{'\n'}{workflow.designLock?.selectedVariantId===variant.id && workflow.designLock.revision===variant.revision?'SELECTED AND LOCKED':'Not selected'}</Text>
+        </View>)}
+      </View>}
+      {!!workflow.approvals.length && <View style={styles.card}>
+        <Text accessibilityLabel={`Applied file approvals: ${workflow.approvals.filter(a=>a.applied&&!a.rolledBack).length}/${workflow.approvals.length}`} style={styles.heading}>Applied file approvals: {workflow.approvals.filter(a=>a.applied&&!a.rolledBack).length}/{workflow.approvals.length}</Text>
+        {workflow.approvals.map(approval=><Text key={'history-'+approval.approvalId} selectable accessibilityLabel={`File approval ${approval.approvalId}`} style={styles.text}>{approval.file}{'\n'}Status: {approval.rolledBack?'ROLLED BACK':approval.rejected?'REJECTED':approval.applied?'APPLIED':'PENDING'}{'\n'}ID: {approval.approvalId}{'\n'}SHA256: {workflow.plan.find(change=>change.file===approval.file)?.afterHash||'Unavailable'}</Text>)}
+      </View>}
       <Report title="design lock" value={workflow.designLock} />
       <Report title="BEFORE report" open={openReport==='BEFORE report'} value={workflow.beforeReport} />
       {state === 'DESIGN_LOCKED' && workflow.mode === 'CREATE_NEW' && <Button label="Prepare architecture proposal" disabled={blocked} onPress={() => void execute('architecture')} />}
