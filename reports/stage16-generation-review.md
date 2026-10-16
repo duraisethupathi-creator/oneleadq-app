@@ -1,5 +1,7 @@
 # Stage 16 actual generated website — human file review
 
+> Step5 final update — 2026-10-16: Explicit human approval plus clarified test-only application completed through existing API. Exact10/10 approved/applied, extra0, all target/review hashes unchanged; workflow VALIDATION_PASSED. TypeScript +14 app suites +2 PS suites +backend59/59 +actual target build/typecheck +8 browser checks PASS. Native10/12 acceptance checkpoints PASS;2 NOT RUN. CI NOT RUN. Test-only Stage16 remains PARTIAL. See [final completion decision](stage16-final-completion.md) and [exact approval/provenance record](stage16-file-approvals.json). Earlier pending-approval statements below are historical and superseded.
+
 Updated 2026-10-16 IST. Generation PASS, ready for human file review. Stage16 overall remains PARTIAL pending file review/application and remaining acceptance. This record supersedes the previous lack-of-design-approval blocker.
 
 Client: Stage 16 test client (client-1791856192040). Project: stage16-create-test. Workflow: d48c7136-2066-42e3-9465-317162e0520e. Approved design: Conversion · Business / Corporate, design-r1-3, revision1. Specification SHA256: 4712ee554912d35474df549855fbcceabd6929ba961ae05abcdc016bca78122c. The existing human approval record and live design lock were validated before generation; neither was recreated or simulated.

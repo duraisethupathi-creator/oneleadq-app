@@ -1,0 +1,288 @@
+{
+  "date": "2026-10-16 IST",
+  "scope": "TEST-ONLY WORKFLOW VALIDATION",
+  "workflowId": "d48c7136-2066-42e3-9465-317162e0520e",
+  "clientId": "client-1791856192040",
+  "state": "VALIDATION_PASSED",
+  "fileApprovals": {
+    "status": "PASS",
+    "approved": 10,
+    "applied": 10,
+    "extraApproved": 0,
+    "bytesUnchanged": true
+  },
+  "appSuites": [
+    {
+      "test": "typecheck",
+      "exitCode": 0
+    },
+    {
+      "test": "test-agency-foundation.cjs",
+      "exitCode": 0
+    },
+    {
+      "test": "test-assistant-mic.cjs",
+      "exitCode": 0
+    },
+    {
+      "test": "test-assistant.cjs",
+      "exitCode": 0
+    },
+    {
+      "test": "test-committed-syntax.cjs",
+      "exitCode": 0
+    },
+    {
+      "test": "test-conversation.cjs",
+      "exitCode": 0
+    },
+    {
+      "test": "test-dashboard-command.cjs",
+      "exitCode": 0
+    },
+    {
+      "test": "test-local-date.cjs",
+      "exitCode": 0
+    },
+    {
+      "test": "test-roaming-assistant.cjs",
+      "exitCode": 0
+    },
+    {
+      "test": "test-stage16-ai-tab.cjs",
+      "exitCode": 0
+    },
+    {
+      "test": "test-stage16-dashboard.cjs",
+      "exitCode": 0
+    },
+    {
+      "test": "test-stage16-final.cjs",
+      "exitCode": 0
+    },
+    {
+      "test": "test-stage16-output.cjs",
+      "exitCode": 0
+    },
+    {
+      "test": "test-stage16-stabilization.cjs",
+      "exitCode": 0
+    },
+    {
+      "test": "test-web-development-panel.cjs",
+      "exitCode": 0
+    },
+    {
+      "test": "test-android-device-discovery.ps1",
+      "exitCode": 0
+    },
+    {
+      "test": "test-android-screen.ps1",
+      "exitCode": 0
+    }
+  ],
+  "backend": {
+    "tests": 59,
+    "pass": 59,
+    "fail": 0,
+    "log": "D:/Android/stage16-step5-backend.log"
+  },
+  "runtime": {
+    "evidence": "MEASURED",
+    "passed": true,
+    "pageWidthChecks": 8,
+    "errors": 0,
+    "missingResources": 0
+  },
+  "workflowValidation": [
+    {
+      "commandId": "npm-typecheck",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "commandId": "npm-build",
+      "exitCode": 0,
+      "passed": true
+    }
+  ],
+  "native": [
+    {
+      "id": "N01",
+      "feature": "App launch",
+      "status": "PASS",
+      "method": "Existing native navigation runner"
+    },
+    {
+      "id": "N02",
+      "feature": "Test client selection",
+      "status": "PASS",
+      "method": "Existing native navigation runner"
+    },
+    {
+      "id": "N03",
+      "feature": "Website routing and exact client handoff",
+      "status": "PASS",
+      "method": "Existing native deterministic routing probe"
+    },
+    {
+      "id": "N04",
+      "feature": "Three existing variants on phone after validation",
+      "status": "NOT RUN",
+      "method": "Final-state panel hides variant selection section; API independently confirms three existing variants; no regeneration"
+    },
+    {
+      "id": "N05",
+      "feature": "Approved Design3 lock revision1",
+      "status": "PASS",
+      "method": "Fresh native design-lock XML and PNG"
+    },
+    {
+      "id": "N06",
+      "feature": "Actual generation record",
+      "status": "PASS",
+      "method": "Native exact workflow and CREATE inventory; live generation/API independently verified"
+    },
+    {
+      "id": "N07",
+      "feature": "Generated ten-file inventory",
+      "status": "PASS",
+      "method": "Unique CREATE entries from five saved fresh native XML captures",
+      "files": [
+        "index.html",
+        "about.html",
+        "services.html",
+        "contact.html",
+        "styles.css",
+        "site.js",
+        "design-review.json",
+        "validate-site.js",
+        "package.json",
+        "robots.txt"
+      ]
+    },
+    {
+      "id": "N08",
+      "feature": "Ten applied file approval statuses on phone",
+      "status": "NOT RUN",
+      "method": "Final-state panel does not expose an applied-approval list; API exact10 applied independently PASS"
+    },
+    {
+      "id": "N09",
+      "feature": "Exact workflow VALIDATION_PASSED",
+      "status": "PASS",
+      "method": "Fresh native header XML and PNG"
+    },
+    {
+      "id": "N10",
+      "feature": "Back/screen transitions",
+      "status": "PASS",
+      "method": "Closed modal, fresh AI screen XML/PNG after measured Move pause"
+    },
+    {
+      "id": "N11",
+      "feature": "Assistant critical controls",
+      "status": "PASS",
+      "method": "Navigation runner measured0 intersections among6 controls; no mascot overlay inside Website modal"
+    },
+    {
+      "id": "N12",
+      "feature": "Bounded crash/critical UI scan",
+      "status": "PASS",
+      "method": "Existing runner found0 FATAL EXCEPTION signatures; not exhaustive crash proof"
+    }
+  ],
+  "rawNavigation": {
+    "PASS": 15,
+    "BLOCKED": 2,
+    "evidence": "D:/Android/stage16-step5-android/results.json"
+  },
+  "rawRouting": {
+    "PASS": 12,
+    "BLOCKED": 2,
+    "evidence": "D:/Android/stage16-step5-routing/results.json"
+  },
+  "ci": {
+    "status": "NOT RUN",
+    "reason": "No local .github/workflows; current changes local/unpushed; limited PR-triggered first-page commit-run connector read for2701c2e returned[]. This is not CI execution or proof no workflows exist remotely."
+  },
+  "completion": "PARTIAL",
+  "remainingIssues": [
+    {
+      "id": "extended-1",
+      "file": "about.html",
+      "category": "technical-seo",
+      "severity": "MEDIUM",
+      "issue": "Missing canonical",
+      "reason": "No static canonical link found",
+      "recommendation": "Confirm production URL and propose canonical",
+      "recommendedFix": "Confirm production URL and propose canonical",
+      "safeAutoFix": false,
+      "evidenceType": "STATIC / INFERRED"
+    },
+    {
+      "id": "extended-2",
+      "file": "contact.html",
+      "category": "technical-seo",
+      "severity": "MEDIUM",
+      "issue": "Missing canonical",
+      "reason": "No static canonical link found",
+      "recommendation": "Confirm production URL and propose canonical",
+      "recommendedFix": "Confirm production URL and propose canonical",
+      "safeAutoFix": false,
+      "evidenceType": "STATIC / INFERRED"
+    },
+    {
+      "id": "extended-3",
+      "file": "index.html",
+      "category": "technical-seo",
+      "severity": "MEDIUM",
+      "issue": "Missing canonical",
+      "reason": "No static canonical link found",
+      "recommendation": "Confirm production URL and propose canonical",
+      "recommendedFix": "Confirm production URL and propose canonical",
+      "safeAutoFix": false,
+      "evidenceType": "STATIC / INFERRED"
+    },
+    {
+      "id": "extended-4",
+      "file": "services.html",
+      "category": "technical-seo",
+      "severity": "MEDIUM",
+      "issue": "Missing canonical",
+      "reason": "No static canonical link found",
+      "recommendation": "Confirm production URL and propose canonical",
+      "recommendedFix": "Confirm production URL and propose canonical",
+      "safeAutoFix": false,
+      "evidenceType": "STATIC / INFERRED"
+    },
+    {
+      "id": "extended-5",
+      "file": "services.html",
+      "category": "content-structure",
+      "severity": "LOW",
+      "issue": "Thin content signal",
+      "reason": "Fewer than 80 static body words; app-rendered text may be absent from source",
+      "recommendation": "Review useful page-specific content; avoid padding or fabricated claims",
+      "recommendedFix": "Review useful page-specific content; avoid padding or fabricated claims",
+      "safeAutoFix": false,
+      "evidenceType": "STATIC / INFERRED"
+    },
+    {
+      "id": "extended-6",
+      "file": "sitemap.xml",
+      "category": "technical-seo",
+      "severity": "MEDIUM",
+      "issue": "sitemap.xml absent from inspection",
+      "reason": "No sitemap found in bounded source",
+      "recommendation": "Use a confirmed domain and reviewed indexable URLs",
+      "recommendedFix": "Use a confirmed domain and reviewed indexable URLs",
+      "safeAutoFix": false,
+      "evidenceType": "STATIC / INFERRED"
+    }
+  ],
+  "commitReferences": [
+    "2701c2e",
+    "ece3672"
+  ]
+}

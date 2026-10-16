@@ -1,0 +1,772 @@
+{
+  "scope": "TEST-ONLY WORKFLOW VALIDATION",
+  "authorizationAttachment": "C:/Users/GOKUL/.codex/attachments/57c1b451-21ff-45ba-a6fc-00270241eab9/Pasted text.txt",
+  "authorizationAttachmentSha256": "0653ad328af521a33ec59921b260c6d69942933392d42a33e47c232604379a75",
+  "clarification": "User selected option1 allowing existing API approval AND application in mapped test workspace only",
+  "workflowId": "d48c7136-2066-42e3-9465-317162e0520e",
+  "clientId": "client-1791856192040",
+  "designId": "design-r1-3",
+  "revision": 1,
+  "specSha256": "4712ee554912d35474df549855fbcceabd6929ba961ae05abcdc016bca78122c",
+  "targetWorkspaceId": "oneleadq-stage16-create-test",
+  "targetPath": "D:/MY AGENT/oneleadq-stage16-create-test",
+  "verifiedAt": "2026-10-16T01:50:48.890Z",
+  "allowlist": [
+    {
+      "file": "index.html",
+      "approvalId": "e000a522-db5d-4ac8-b2fc-32a85815f5d4",
+      "sha256": "5c9af75f58470e81f7b05eb41e3e702d04b99695b83162719481e4f5dc17f2de",
+      "verification": "PASS"
+    },
+    {
+      "file": "about.html",
+      "approvalId": "72cb4b9b-6a12-4711-95fe-c57838d56562",
+      "sha256": "14868c7941794a0d163ec4d9217bff061b63989af880f1cd726ade441fb955bd",
+      "verification": "PASS"
+    },
+    {
+      "file": "services.html",
+      "approvalId": "bfc951ae-65d1-4208-9a29-ceb68180239e",
+      "sha256": "7aff55292a8fbe5ee7895980062c1aa92c3b338507d6f9cea046ec250c2977b6",
+      "verification": "PASS"
+    },
+    {
+      "file": "contact.html",
+      "approvalId": "7b632b66-9b2c-4b8d-b86d-d1a3fcc7b873",
+      "sha256": "fe2340783aff0ad4629a883c436e358ef91ed75b3650c7af195b359b836f2ce0",
+      "verification": "PASS"
+    },
+    {
+      "file": "styles.css",
+      "approvalId": "b37cd4ce-6553-47eb-98bd-bba904fefe35",
+      "sha256": "fc08175af0a253c160abc708fd5c2bc7b0fe8e08a3babcb05545516847210dde",
+      "verification": "PASS"
+    },
+    {
+      "file": "site.js",
+      "approvalId": "39123d41-b637-4682-8eb9-5e15e78bacf5",
+      "sha256": "c042ceefd9f13f1b6d58fd8da8c0f9024e1ddcfba1bebbba7e4db68383b04c7b",
+      "verification": "PASS"
+    },
+    {
+      "file": "design-review.json",
+      "approvalId": "5301f578-e6ca-467a-b842-fcf9b55a8a9c",
+      "sha256": "28dbccb26d073d3ae710b25c9a6c609efc62496582a7c037c7a8460e119b1c94",
+      "verification": "PASS"
+    },
+    {
+      "file": "validate-site.js",
+      "approvalId": "84641c22-0354-4fc8-85a7-db64a539dfa2",
+      "sha256": "380e6b9b5717cfb4286aaecb2d86c3bafce77d423f513367efdf3b8d34360af0",
+      "verification": "PASS"
+    },
+    {
+      "file": "package.json",
+      "approvalId": "9214fe09-c441-49ee-87e0-e6919f00cf42",
+      "sha256": "598df57be23d13d7ff8638b64ca74f87e4055eb20ab581c3198b46b355e9f742",
+      "verification": "PASS"
+    },
+    {
+      "file": "robots.txt",
+      "approvalId": "b0590289-aa6b-470b-ac89-c35858e9ffd1",
+      "sha256": "16ceb5ee3e0dc13aa9adf31a3ebbe45a1d965b8c2b9f72eaf84e5911e140ed95",
+      "verification": "PASS"
+    }
+  ],
+  "approvedAt": "2026-10-16T01:50:50.633Z",
+  "approvedCount": 10,
+  "appliedCount": 10,
+  "state": "WAITING_FOR_FILE_APPROVAL",
+  "bytesUnchanged": true,
+  "approvals": [
+    {
+      "file": "index.html",
+      "operation": "CREATE",
+      "approvalId": "e000a522-db5d-4ac8-b2fc-32a85815f5d4",
+      "applied": true,
+      "operationId": "e9f4e331-e24a-41c1-9082-44de825e0721"
+    },
+    {
+      "file": "about.html",
+      "operation": "CREATE",
+      "approvalId": "72cb4b9b-6a12-4711-95fe-c57838d56562",
+      "applied": true,
+      "operationId": "78fb0ef1-38e7-44ab-b6af-01075ef52b8e"
+    },
+    {
+      "file": "services.html",
+      "operation": "CREATE",
+      "approvalId": "bfc951ae-65d1-4208-9a29-ceb68180239e",
+      "applied": true,
+      "operationId": "b16aa0e7-1c6d-4d0b-b0a3-d6ab49d193b9"
+    },
+    {
+      "file": "contact.html",
+      "operation": "CREATE",
+      "approvalId": "7b632b66-9b2c-4b8d-b86d-d1a3fcc7b873",
+      "applied": true,
+      "operationId": "341788fd-6322-4960-abd5-63ea669b3a37"
+    },
+    {
+      "file": "styles.css",
+      "operation": "CREATE",
+      "approvalId": "b37cd4ce-6553-47eb-98bd-bba904fefe35",
+      "applied": true,
+      "operationId": "e1eaad7f-bd26-4e6b-8930-b062fe089154"
+    },
+    {
+      "file": "site.js",
+      "operation": "CREATE",
+      "approvalId": "39123d41-b637-4682-8eb9-5e15e78bacf5",
+      "applied": true,
+      "operationId": "523a62e6-0f82-4e05-a7c8-2d0445ac3fc7"
+    },
+    {
+      "file": "design-review.json",
+      "operation": "CREATE",
+      "approvalId": "5301f578-e6ca-467a-b842-fcf9b55a8a9c",
+      "applied": true,
+      "operationId": "97d48711-9ac4-4591-b309-36c43375dd49"
+    },
+    {
+      "file": "validate-site.js",
+      "operation": "CREATE",
+      "approvalId": "84641c22-0354-4fc8-85a7-db64a539dfa2",
+      "applied": true,
+      "operationId": "d2d9a4fd-bd7d-42eb-b564-88e3f347baf2"
+    },
+    {
+      "file": "package.json",
+      "operation": "CREATE",
+      "approvalId": "9214fe09-c441-49ee-87e0-e6919f00cf42",
+      "applied": true,
+      "operationId": "a02c7138-b7e4-4bd6-a07c-8aa82319b5c4"
+    },
+    {
+      "file": "robots.txt",
+      "operation": "CREATE",
+      "approvalId": "b0590289-aa6b-470b-ac89-c35858e9ffd1",
+      "applied": true,
+      "operationId": "5ced3461-ff19-4703-99c6-2b9803a036ee"
+    }
+  ],
+  "finalVerification": {
+    "recordedAt": "2026-10-16T02:02:47.907Z",
+    "workflowId": "d48c7136-2066-42e3-9465-317162e0520e",
+    "clientId": "client-1791856192040",
+    "workspaceId": "oneleadq-stage16-create-test",
+    "state": "VALIDATION_PASSED",
+    "approvedAppliedCount": 10,
+    "extraApprovedCount": 0,
+    "bytesUnchanged": true,
+    "designId": "design-r1-3",
+    "revision": 1,
+    "specSha256": "4712ee554912d35474df549855fbcceabd6929ba961ae05abcdc016bca78122c",
+    "variants": [
+      {
+        "id": "design-r1-1",
+        "name": "Editorial · Business / Corporate",
+        "revision": 1
+      },
+      {
+        "id": "design-r1-2",
+        "name": "Immersive · Business / Corporate",
+        "revision": 1
+      },
+      {
+        "id": "design-r1-3",
+        "name": "Conversion · Business / Corporate",
+        "revision": 1
+      }
+    ],
+    "approvals": [
+      {
+        "file": "index.html",
+        "operation": "CREATE",
+        "approvalId": "e000a522-db5d-4ac8-b2fc-32a85815f5d4",
+        "applied": true,
+        "operationId": "e9f4e331-e24a-41c1-9082-44de825e0721"
+      },
+      {
+        "file": "about.html",
+        "operation": "CREATE",
+        "approvalId": "72cb4b9b-6a12-4711-95fe-c57838d56562",
+        "applied": true,
+        "operationId": "78fb0ef1-38e7-44ab-b6af-01075ef52b8e"
+      },
+      {
+        "file": "services.html",
+        "operation": "CREATE",
+        "approvalId": "bfc951ae-65d1-4208-9a29-ceb68180239e",
+        "applied": true,
+        "operationId": "b16aa0e7-1c6d-4d0b-b0a3-d6ab49d193b9"
+      },
+      {
+        "file": "contact.html",
+        "operation": "CREATE",
+        "approvalId": "7b632b66-9b2c-4b8d-b86d-d1a3fcc7b873",
+        "applied": true,
+        "operationId": "341788fd-6322-4960-abd5-63ea669b3a37"
+      },
+      {
+        "file": "styles.css",
+        "operation": "CREATE",
+        "approvalId": "b37cd4ce-6553-47eb-98bd-bba904fefe35",
+        "applied": true,
+        "operationId": "e1eaad7f-bd26-4e6b-8930-b062fe089154"
+      },
+      {
+        "file": "site.js",
+        "operation": "CREATE",
+        "approvalId": "39123d41-b637-4682-8eb9-5e15e78bacf5",
+        "applied": true,
+        "operationId": "523a62e6-0f82-4e05-a7c8-2d0445ac3fc7"
+      },
+      {
+        "file": "design-review.json",
+        "operation": "CREATE",
+        "approvalId": "5301f578-e6ca-467a-b842-fcf9b55a8a9c",
+        "applied": true,
+        "operationId": "97d48711-9ac4-4591-b309-36c43375dd49"
+      },
+      {
+        "file": "validate-site.js",
+        "operation": "CREATE",
+        "approvalId": "84641c22-0354-4fc8-85a7-db64a539dfa2",
+        "applied": true,
+        "operationId": "d2d9a4fd-bd7d-42eb-b564-88e3f347baf2"
+      },
+      {
+        "file": "package.json",
+        "operation": "CREATE",
+        "approvalId": "9214fe09-c441-49ee-87e0-e6919f00cf42",
+        "applied": true,
+        "operationId": "a02c7138-b7e4-4bd6-a07c-8aa82319b5c4"
+      },
+      {
+        "file": "robots.txt",
+        "operation": "CREATE",
+        "approvalId": "b0590289-aa6b-470b-ac89-c35858e9ffd1",
+        "applied": true,
+        "operationId": "5ced3461-ff19-4703-99c6-2b9803a036ee"
+      }
+    ],
+    "validation": [
+      {
+        "commandId": "npm-typecheck",
+        "exitCode": 0,
+        "passed": true
+      },
+      {
+        "commandId": "npm-build",
+        "exitCode": 0,
+        "passed": true
+      }
+    ],
+    "runtime": {
+      "evidence": "MEASURED",
+      "scope": "Isolated source snapshot served over temporary loopback HTTP; external networking blocked, not a deployed-site crawl",
+      "pages": [
+        {
+          "file": "about.html",
+          "width": 1280,
+          "cssViewportWidth": 1280,
+          "title": "about | Stage 16 test client",
+          "render": true,
+          "horizontalOverflow": false,
+          "navigation": [
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/about.html",
+              "status": 200
+            },
+            {
+              "path": "/services.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/about.html",
+              "status": 200
+            },
+            {
+              "path": "/services.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            }
+          ]
+        },
+        {
+          "file": "about.html",
+          "width": 390,
+          "cssViewportWidth": 390,
+          "title": "about | Stage 16 test client",
+          "render": true,
+          "horizontalOverflow": false,
+          "navigation": [
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/about.html",
+              "status": 200
+            },
+            {
+              "path": "/services.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/about.html",
+              "status": 200
+            },
+            {
+              "path": "/services.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            }
+          ]
+        },
+        {
+          "file": "contact.html",
+          "width": 1280,
+          "cssViewportWidth": 1280,
+          "title": "contact | Stage 16 test client",
+          "render": true,
+          "horizontalOverflow": false,
+          "navigation": [
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/about.html",
+              "status": 200
+            },
+            {
+              "path": "/services.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/about.html",
+              "status": 200
+            },
+            {
+              "path": "/services.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            }
+          ]
+        },
+        {
+          "file": "contact.html",
+          "width": 390,
+          "cssViewportWidth": 390,
+          "title": "contact | Stage 16 test client",
+          "render": true,
+          "horizontalOverflow": false,
+          "navigation": [
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/about.html",
+              "status": 200
+            },
+            {
+              "path": "/services.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/about.html",
+              "status": 200
+            },
+            {
+              "path": "/services.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            }
+          ]
+        },
+        {
+          "file": "index.html",
+          "width": 1280,
+          "cssViewportWidth": 1280,
+          "title": "Stage 16 test client",
+          "render": true,
+          "horizontalOverflow": false,
+          "navigation": [
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/about.html",
+              "status": 200
+            },
+            {
+              "path": "/services.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/about.html",
+              "status": 200
+            },
+            {
+              "path": "/services.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            }
+          ]
+        },
+        {
+          "file": "index.html",
+          "width": 390,
+          "cssViewportWidth": 390,
+          "title": "Stage 16 test client",
+          "render": true,
+          "horizontalOverflow": false,
+          "navigation": [
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/about.html",
+              "status": 200
+            },
+            {
+              "path": "/services.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/about.html",
+              "status": 200
+            },
+            {
+              "path": "/services.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            }
+          ]
+        },
+        {
+          "file": "services.html",
+          "width": 1280,
+          "cssViewportWidth": 1280,
+          "title": "services | Stage 16 test client",
+          "render": true,
+          "horizontalOverflow": false,
+          "navigation": [
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/about.html",
+              "status": 200
+            },
+            {
+              "path": "/services.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/about.html",
+              "status": 200
+            },
+            {
+              "path": "/services.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            }
+          ]
+        },
+        {
+          "file": "services.html",
+          "width": 390,
+          "cssViewportWidth": 390,
+          "title": "services | Stage 16 test client",
+          "render": true,
+          "horizontalOverflow": false,
+          "navigation": [
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/about.html",
+              "status": 200
+            },
+            {
+              "path": "/services.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            },
+            {
+              "path": "/index.html",
+              "status": 200
+            },
+            {
+              "path": "/about.html",
+              "status": 200
+            },
+            {
+              "path": "/services.html",
+              "status": 200
+            },
+            {
+              "path": "/contact.html",
+              "status": 200
+            }
+          ]
+        }
+      ],
+      "errors": [],
+      "missingResources": [],
+      "passed": true,
+      "performance": "NOT MEASURED",
+      "redirects": "Only snapshot HTTP behaviour measured; production redirects NOT MEASURED",
+      "screenshots": [
+        {
+          "width": 1280,
+          "height": 900,
+          "evidence": "MEASURED BROWSER SCREENSHOT ? isolated snapshot"
+        },
+        {
+          "width": 390,
+          "height": 900,
+          "evidence": "MEASURED BROWSER SCREENSHOT ? isolated snapshot"
+        }
+      ]
+    },
+    "remainingIssues": [
+      {
+        "id": "extended-1",
+        "file": "about.html",
+        "category": "technical-seo",
+        "severity": "MEDIUM",
+        "issue": "Missing canonical",
+        "reason": "No static canonical link found",
+        "recommendation": "Confirm production URL and propose canonical",
+        "recommendedFix": "Confirm production URL and propose canonical",
+        "safeAutoFix": false,
+        "evidenceType": "STATIC / INFERRED"
+      },
+      {
+        "id": "extended-2",
+        "file": "contact.html",
+        "category": "technical-seo",
+        "severity": "MEDIUM",
+        "issue": "Missing canonical",
+        "reason": "No static canonical link found",
+        "recommendation": "Confirm production URL and propose canonical",
+        "recommendedFix": "Confirm production URL and propose canonical",
+        "safeAutoFix": false,
+        "evidenceType": "STATIC / INFERRED"
+      },
+      {
+        "id": "extended-3",
+        "file": "index.html",
+        "category": "technical-seo",
+        "severity": "MEDIUM",
+        "issue": "Missing canonical",
+        "reason": "No static canonical link found",
+        "recommendation": "Confirm production URL and propose canonical",
+        "recommendedFix": "Confirm production URL and propose canonical",
+        "safeAutoFix": false,
+        "evidenceType": "STATIC / INFERRED"
+      },
+      {
+        "id": "extended-4",
+        "file": "services.html",
+        "category": "technical-seo",
+        "severity": "MEDIUM",
+        "issue": "Missing canonical",
+        "reason": "No static canonical link found",
+        "recommendation": "Confirm production URL and propose canonical",
+        "recommendedFix": "Confirm production URL and propose canonical",
+        "safeAutoFix": false,
+        "evidenceType": "STATIC / INFERRED"
+      },
+      {
+        "id": "extended-5",
+        "file": "services.html",
+        "category": "content-structure",
+        "severity": "LOW",
+        "issue": "Thin content signal",
+        "reason": "Fewer than 80 static body words; app-rendered text may be absent from source",
+        "recommendation": "Review useful page-specific content; avoid padding or fabricated claims",
+        "recommendedFix": "Review useful page-specific content; avoid padding or fabricated claims",
+        "safeAutoFix": false,
+        "evidenceType": "STATIC / INFERRED"
+      },
+      {
+        "id": "extended-6",
+        "file": "sitemap.xml",
+        "category": "technical-seo",
+        "severity": "MEDIUM",
+        "issue": "sitemap.xml absent from inspection",
+        "reason": "No sitemap found in bounded source",
+        "recommendation": "Use a confirmed domain and reviewed indexable URLs",
+        "recommendedFix": "Use a confirmed domain and reviewed indexable URLs",
+        "safeAutoFix": false,
+        "evidenceType": "STATIC / INFERRED"
+      }
+    ]
+  }
+}
