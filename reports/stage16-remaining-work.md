@@ -1,12 +1,7 @@
-# Stage16 remaining work — final closure
+# Stage16 remaining work — test QA closed
 
-Updated 2026-10-16 IST. Native acceptance12/12 PASS. Approvals10/10 applied, approved bytes/spec unchanged, live workflow VALIDATION_PASSED. Exact tested functional commit 02abfe0014ad78eb826eb2f42521c3979bb65a83; branch qa/stage16-20261015.
+Updated 2026-10-16 IST. Stage16 test-workflow QA COMPLETE. Native12/12 PASS; actual remote CI PASS at b840d4d764d98d3bbc507d28f033211c6a4c5e94, [run #1](https://github.com/duraisethupathi-creator/oneleadq-app/actions/runs/38842009039). Approvals10/10 applied, hashes/design unchanged, workflow VALIDATION_PASSED. No remaining test-workflow closure blocker or reproduced critical test-flow bug.
 
-| Test ID | Feature | Expected | Actual | Method | Status | Evidence | Fix commit |
-|---|---|---|---|---|---|---|---|
-| REM-CI | Exact-commit CI | Remote TypeScript/app/backend/approval/website run | SHA local-only; no existing CI workflow found; run URL/conclusion absent | Git fetch/tree, ls-remote and GitHub commit lookup | BLOCKED | stage16-ci-status.json | — |
-| REM-NATIVE | Remaining native views | Three variants and ten applied approvals visible | All12 checkpoints pass with real XML/screenshots | Actual I2127 phone | PASS | stage16-closure-verification.json | 02abfe0014ad78eb826eb2f42521c3979bb65a83 |
+Original reviewed/native commit02abfe0014ad78eb826eb2f42521c3979bb65a83 is preserved as an ancestor; it is not claimed to be the newer CI SHA. See stage16-final-completion.md and stage16-ci-status.json for exact evidence.
 
-Smallest action to unblock CI: provide/configure non-deploying CI with correct backend/test fixtures and browser setup, and make the exact reviewed feature commit available. Alternatively provide the actual existing external CI workflow/ref and exact-commit trigger access. Do not claim local tests are remote CI. No workflow or remote branch was created in this task.
-
-No remaining critical product bug reproduced in the exercised Stage16 flow. Overall test workflow remains PARTIAL solely because required remote CI did not run. Separate production gaps remain: verified catalogue/contact/domain/imagery, enquiry backend, canonical/sitemap, crawler policy and security audit. Do not edit approved files/hashes to silence missing-data signals. No deploy/publish/production changes or Stage17.
+Outstanding production requirements remain outside this closure: verified business data/contacts/assets/domain, real enquiry delivery, canonical/sitemap and crawler policy, security audit, production approval and device/performance coverage beyond the exercised fixture. No deployment/publication or Stage17 work is authorized by test closure.

@@ -1,44 +1,67 @@
-# Stage16 final QA closure — PARTIAL
+# Stage16 QA closure — COMPLETE (test workflow only)
 
-Updated 2026-10-16 IST. Android acceptance:12 PASS,0 FAIL,0 NOT RUN. Exact-commit CI:BLOCKED. File approvals remain10/10 applied; no extra approvals or approved file changes. Workflow VALIDATION_PASSED. Test-only workflow is not COMPLETE because required remote CI did not execute.
+Updated 2026-10-16 IST. Android12/12 PASS, exact committed-fixture remote CI PASS, file approvals10/10 applied, workflow VALIDATION_PASSED. No remaining Stage16 test-workflow closure blocker. This is not production readiness or publication approval.
 
-Branch qa/stage16-20261015. Exact tested functional commit: 02abfe0014ad78eb826eb2f42521c3979bb65a83. This is the commit used for clean-checkout affected tests and the device acceptance; the later reports-only commit is recorded separately in Git history. Baseline before this closure was78f417dba1c1157ceed1df8dee219829bf7dab72.
+## Exact identities
 
-Client Stage16 test client (client-1791856192040), workflow d48c7136-2066-42e3-9465-317162e0520e, Design3 Conversion · Business / Corporate, design-r1-3 revision1. Approved specification SHA256 4712ee554912d35474df549855fbcceabd6929ba961ae05abcdc016bca78122c. Final live GET and byte hashes confirmed three existing variants, ten exact applied approvals, unchanged design and unchanged review/target bytes. No generation/approval endpoint was called in this closure.
+- Branch: qa/stage16-20261015, repository duraisethupathi-creator/oneleadq-app.
+- Original reviewed/native-tested commit:02abfe0014ad78eb826eb2f42521c3979bb65a83.
+- Prior closure reports commit:03807b6.
+- Actual remote CI-tested commit:b840d4d764d98d3bbc507d28f033211c6a4c5e94. This is a newer descendant, not the same SHA as the original reviewed commit.
+- Workflow/fixture commit:1959ac3712dc8fa789d35c9a2bc76acfbfa651a9; fixture-byte preservation follow-up:b840d4d764d98d3bbc507d28f033211c6a4c5e94.
+- Reviewed ancestry verified inside the actual CI job with git merge-base; checked-out HEAD equals GITHUB_SHA.
+- app/,src/,package.json and package-lock.json have no diff between original reviewed commit and CI commit. Native application source is unchanged. Portable tests and sanitized backend/Bridge fixtures were added for reproducibility.
+- Later evidence/report-only commit is separate in Git history; it is not falsely described as the CI-tested SHA. Workflow ignores reports-only pushes.
 
-| Test ID | Feature | Expected | Actual | Method | Status | Evidence | Fix commit |
-|---|---|---|---|---|---|---|---|
-| N01 | Actual OneLeadQ launch | Actual physical device evidence | App visible | Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan | PASS | D:/Android/stage16-closure-navigation/home.xml/png | — |
-| N02 | Stage16 client selection | Actual physical device evidence | Exact fixture selected | Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan | PASS | D:/Android/stage16-closure-navigation/fixture.xml/png | — |
-| N03 | Website Agent routing | Actual physical device evidence | Deterministic route and exact client handoff | Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan | PASS | D:/Android/stage16-closure-navigation/ai-routing.xml/png; website-handoff.xml/png | — |
-| N04 | Three existing variants | Actual physical device evidence | All names/version IDs/revision1 visible | Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan | PASS | D:/Android/stage16-closure-native/inspection-0.xml/png | 02abfe0014ad78eb826eb2f42521c3979bb65a83 |
-| N05 | Design3 lock | Actual physical device evidence | design-r1-3 revision1 SELECTED AND LOCKED | Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan | PASS | D:/Android/stage16-closure-native/inspection-0.xml/png | — |
-| N06 | Generation record | Actual physical device evidence | Exact workflow VALIDATION_PASSED; CREATE_NEW and actual generated proposals | Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan | PASS | D:/Android/stage16-closure-native/header.xml/png; inspection-0.xml/png; inspection-2.xml/png | — |
-| N07 | Ten generated files | Actual physical device evidence | Ten distinct CREATE entries observed | Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan | PASS | D:/Android/stage16-closure-native/inspection-2..4.xml/png; results.json | — |
-| N08 | Ten applied approvals | Actual physical device evidence | Count10/10; all exact IDs/hashes APPLIED | Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan | PASS | D:/Android/stage16-closure-native/inspection-1..2.xml/png; results.json | 02abfe0014ad78eb826eb2f42521c3979bb65a83 |
-| N09 | Current workflow state | Actual physical device evidence | Exact workflow ID and VALIDATION_PASSED | Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan | PASS | D:/Android/stage16-closure-native/header.xml/png | — |
-| N10 | Back/transitions | Actual physical device evidence | Website modal closes to actual AI screen | Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan | PASS | D:/Android/stage16-closure-native/back.xml/png | — |
-| N11 | Assistant critical controls | Actual physical device evidence | Zero measured intersections among6 controls; no mascot inside modal | Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan | PASS | D:/Android/stage16-closure-navigation/results.json; D:/Android/stage16-closure-native/inspection-0..4.png | — |
-| N12 | Crashes/critical UI | Actual physical device evidence | Zero bounded fatal signatures and no critical UI error marker in captures | Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan | PASS | D:/Android/stage16-closure-navigation/results.json; D:/Android/stage16-closure-native/results.json | — |
+## Actual GitHub Actions result
 
-Two reproducible Stage16 UI bugs were fixed: final validation states hid the existing variant list; the approval UI showed only pending entries and omitted consumed approvals. Added read-only saved variant history and approval history with statuses, exact IDs and plan hashes. No approval actions were added. Rolled-back/rejected/pending states remain distinct. A regression first failed on missing final-state variants, then passed with all three visible and ten history entries; it also asserts no generation/design/file-approval buttons in final-state history and only mocked GET calls. TypeScript and68-file committed syntax checks PASS. The clean detached verification checkout at the exact SHA passes the updated panel regression and TypeScript.
+[Run #1 — Stage16 test-only CI](https://github.com/duraisethupathi-creator/oneleadq-app/actions/runs/38842009039)
 
-Physical I2127 connected through discovered192.168.1.4:39669 (mDNS alias is the same phone). Existing navigation/routing runner:19 PASS,0 FAIL,1 NOT RUN (generation deliberately outside that runner; exact resumed workflow inspected separately). These19 rows overlap the12 acceptance checkpoints and are not an additive test count. Supplemental read-only inspection captured three variants, ten APPLIED entries with exact hashes, ten CREATE inventory entries, the exact current workflow and return to AI. Screenshots inspection0,1,2 were visually reviewed as well as machine-checked XML. Bounded log scan found0 fatal signatures; this is not exhaustive crash/performance proof.
+Run ID:38842009039; job ID:116784013814; event:push; status:completed; conclusion:success. Actual SHA:b840d4d764d98d3bbc507d28f033211c6a4c5e94.
 
-Native harness interruptions were handled honestly: developer menu obscured navigation; clipped input and an open keyboard interfered with automated typing/scrolling. Closed the overlay, brought the field fully into view, settled keyboard transitions and verified the exact saved workflow ID before GET. Failed attempts were BLOCKED, not acceptance passes. Subsequent fresh inspection passed. No stale XML was used. Temporary local scripts and raw screenshots remain at D:/Android/stage16-closure-native and D:/Android/stage16-closure-navigation. Automation script: D:/Android/stage16-closure-inspect.ps1.
+| Remote CI check | Actual conclusion |
+|---|---|
+| TypeScript typecheck | SUCCESS |
+| Fourteen app regression suites | SUCCESS |
+| Two PowerShell automation suites | SUCCESS |
+| Fifty-nine backend tests including approval and generation gates | SUCCESS |
+| Generated website build, typecheck and desktop/mobile validation | SUCCESS |
 
-## Exact-commit CI — BLOCKED
+Actual remote logs confirm14 app suites,59 backend tests/pass59/fail0, and8 generated-site page/width browser checks. Both PowerShell suites ran under pwsh. Approval/generation/Bridge gates are included in the59 backend tests and Stage16 app suites. Generated fixture npm build and typecheck pass. No checks were skipped or replaced by local results.
 
-GitHub lookup for 02abfe0014ad78eb826eb2f42521c3979bb65a83 returnedHTTP422: No commit found for SHA. git ls-remote found no qa/stage16-20261015 branch. No .github/workflows is present locally; fetched remote main20624b2262344bb501d0ed9dfb9e886269c720e1 also has no .github workflow tree. Remote workflow-directory lookup returned404. Workflow-list/dispatch is not exposed by the connector; no existing runnable workflow was found. No source push, workflow creation or CI dispatch was performed.
+Remote artifact: stage16-ci-b840d4d764d98d3bbc507d28f033211c6a4c5e94-1, ID12021633272, 182889bytes, retention7days. Artifact contains committed-SHA metadata, per-suite results/logs, generated source, browser measurements and screenshots. Full decoded actual job log saved locally:D:/Android/stage16-remote-ci/job-116784013814.log; SHA256:91e103214203a535ab84f71df828e6d439fd819273edbb8049236e785e6b6ef4. Machine-readable run, job/step conclusions and log assertions are committed in stage16-ci-status.json. GitHub run page provides the actual remote logs.
 
-CI run URL:none. CI tested SHA requested:02abfe0014ad78eb826eb2f42521c3979bb65a83. Remote CI conclusion:none. TypeScript/app/backend/approval/website checks in remote CI:BLOCKED (not substituted by local results). Exact inspection evidence: stage16-ci-status.json.
+## Native acceptance
 
-Smallest unblock action: provide/configure a non-deploying CI workflow and make the reviewed feature commit available to that CI. The workflow must provision the correct backend/test fixtures and browser dependencies; the existing backend working tree is still pre-existing dirty source, so its59 local passes are not a pinned remote-backend CI result. If CI exists elsewhere, supply its workflow/repository/ref and exact-SHA trigger access. No further Android action is required for these12 checkpoints.
+| ID | Check | Status | Real device evidence |
+|---|---|---|---|
+| N01 | Actual OneLeadQ launch | PASS | D:/Android/stage16-closure-navigation/home.xml/png |
+| N02 | Stage16 client selection | PASS | D:/Android/stage16-closure-navigation/fixture.xml/png |
+| N03 | Website Agent routing | PASS | D:/Android/stage16-closure-navigation/ai-routing.xml/png; website-handoff.xml/png |
+| N04 | Three existing variants | PASS | D:/Android/stage16-closure-native/inspection-0.xml/png |
+| N05 | Design3 lock | PASS | D:/Android/stage16-closure-native/inspection-0.xml/png |
+| N06 | Generation record | PASS | D:/Android/stage16-closure-native/header.xml/png; inspection-0.xml/png; inspection-2.xml/png |
+| N07 | Ten generated files | PASS | D:/Android/stage16-closure-native/inspection-2..4.xml/png; results.json |
+| N08 | Ten applied approvals | PASS | D:/Android/stage16-closure-native/inspection-1..2.xml/png; results.json |
+| N09 | Current workflow state | PASS | D:/Android/stage16-closure-native/header.xml/png |
+| N10 | Back/transitions | PASS | D:/Android/stage16-closure-native/back.xml/png |
+| N11 | Assistant critical controls | PASS | D:/Android/stage16-closure-navigation/results.json; D:/Android/stage16-closure-native/inspection-0..4.png |
+| N12 | Crashes/critical UI | PASS | D:/Android/stage16-closure-navigation/results.json; D:/Android/stage16-closure-native/results.json |
 
-## Remaining issues and safety
+Native captures remain at D:/Android/stage16-closure-native and D:/Android/stage16-closure-navigation. They were verified on physical I2127, not an emulator or substitute browser. Same application source tree is present in the CI commit. The two prior missing native views were repaired as read-only histories; no approval/generation action was added.
 
-No reproduced critical Stage16 product bug remains in the exercised acceptance flow. CI is the remaining test-workflow closure blocker. Production readiness remains separate: verified business/contact/imagery, enquiry delivery, canonical/sitemap with verified domain, crawler policy and security audit are incomplete. Approved files retain all labelled fixture placeholders and their original hashes; no real enquiries or production data changes occurred. No deploy, publish, merge, force-push or Stage17 work.
+## Reproducible and non-deploying CI
 
-Previous full local regression at Step5:TypeScript,14 app suites,2 PowerShell suites,59/59 backend, target build/typecheck and8 browser checks PASS. These are historical local passes. Only affected checks were repeated after this display-only source change; they do not establish remote CI.
+.github/workflows/stage16-ci.yml runs only the authorized QA branch on Windows/Node24 with committed-lockfile npm ci installs. Official Actions are pinned to resolved commit SHAs. Token permissions contents:read; checkout credentials are not persisted. There are no deploy, publish, domain, customer-write, live website or paid-provider steps. No Gemini secrets are referenced or committed.
 
-Evidence: stage16-closure-verification.json; stage16-ci-status.json; original approval provenance stage16-file-approvals.json. Final decision:PARTIAL until actual exact-commit CI passes.
+All required backend and Windows Bridge modules are committed under tests/fixtures with44 original source/lock SHA256 entries. These are explicit test-only snapshots of the actual previously tested source, including earlier uncommitted backend prerequisites; they are not falsely represented as the old backend HEAD alone. Source repositories and their unrelated dirty changes were preserved. .env, node_modules, backups, real workspace mappings and customer websites are excluded; committed mappings are empty. Fixtures/tests create synthetic temporary loopback services and never call the real Stage16 approval workflow.
+
+Five app suites previously hardcoded developer backend paths; they now resolve a committed fixture root or explicit test override. CI has no dependency on untracked D:/Android files or developer checkout paths. Fixture byte preservation avoids line-ending hash drift. Prior local YAML resolution/whitespace inspection issues were corrected before push; first actual remote Actions run passed without a failing remote attempt.
+
+## Approved workflow and remaining production work
+
+Client Stage16 test client (client-1791856192040); workflow d48c7136-2066-42e3-9465-317162e0520e; Design3 design-r1-3 revision1. Original design specification and ten approved file hashes remain unchanged; no additional approval or approved-file modification occurred during CI setup. Actual target remains VALIDATION_PASSED with10 exact applied approvals. See stage16-file-approvals.json for original provenance and exact allowlist.
+
+No remaining critical bug reproduced in the Stage16 test flow. Production work remains separate: verified business catalogue/contact/domain/imagery, actual enquiry delivery, canonical/sitemap/crawler policy, security audit, and deployment approval. Placeholders remain labelled. No deployment/publication, merge, force-push, customer production data change, real enquiry or Stage17 work occurred. Only qa/stage16-20261015 was pushed.
+
+Final decision:Stage16 test-workflow QA COMPLETE. Production readiness NOT ESTABLISHED.

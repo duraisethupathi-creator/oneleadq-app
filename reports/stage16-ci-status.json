@@ -1,28 +1,201 @@
 {
-  "status": "BLOCKED",
-  "testedCommit": "02abfe0014ad78eb826eb2f42521c3979bb65a83",
+  "repository": "duraisethupathi-creator/oneleadq-app",
   "branch": "qa/stage16-20261015",
-  "remoteMain": "20624b2262344bb501d0ed9dfb9e886269c720e1",
-  "remoteBranchPresent": false,
-  "localWorkflowsPresent": false,
-  "remoteMainWorkflowTree": [],
-  "githubCommitLookup": {
-    "status": 422,
-    "message": "No commit found for SHA: 02abfe0014ad78eb826eb2f42521c3979bb65a83"
+  "runId": 38842009039,
+  "runUrl": "https://github.com/duraisethupathi-creator/oneleadq-app/actions/runs/38842009039",
+  "status": "completed",
+  "conclusion": "success",
+  "ciStatus": "PASS",
+  "ciTestedCommit": "b840d4d764d98d3bbc507d28f033211c6a4c5e94",
+  "reviewedAncestor": "02abfe0014ad78eb826eb2f42521c3979bb65a83",
+  "reviewedAncestorVerified": true,
+  "appSourceUnchangedFromReviewedAncestor": true,
+  "scope": "TEST ONLY; no deployment or publication",
+  "jobs": [
+    {
+      "id": 116784013814,
+      "name": "stage16",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/duraisethupathi-creator/oneleadq-app/actions/runs/38842009039/job/116784013814",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-16T02:44:59Z",
+          "completed_at": "2026-10-16T02:45:00Z"
+        },
+        {
+          "name": "Checkout exact triggering commit",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-16T02:45:00Z",
+          "completed_at": "2026-10-16T02:45:08Z"
+        },
+        {
+          "name": "Node.js 24",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-16T02:45:08Z",
+          "completed_at": "2026-10-16T02:45:15Z"
+        },
+        {
+          "name": "Record exact SHA and reviewed ancestry",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-16T02:45:15Z",
+          "completed_at": "2026-10-16T02:45:16Z"
+        },
+        {
+          "name": "Verify committed fixture provenance and isolation",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-16T02:45:16Z",
+          "completed_at": "2026-10-16T02:45:17Z"
+        },
+        {
+          "name": "Install app locked dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-16T02:45:17Z",
+          "completed_at": "2026-10-16T02:45:49Z"
+        },
+        {
+          "name": "Install backend fixture locked dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-16T02:45:49Z",
+          "completed_at": "2026-10-16T02:45:57Z"
+        },
+        {
+          "name": "Install Bridge fixture locked dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-16T02:45:57Z",
+          "completed_at": "2026-10-16T02:45:59Z"
+        },
+        {
+          "name": "Verify local Edge renderer",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-16T02:45:59Z",
+          "completed_at": "2026-10-16T02:46:00Z"
+        },
+        {
+          "name": "TypeScript typecheck",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-16T02:46:00Z",
+          "completed_at": "2026-10-16T02:46:07Z"
+        },
+        {
+          "name": "Fourteen app regression suites",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-16T02:46:07Z",
+          "completed_at": "2026-10-16T02:46:27Z"
+        },
+        {
+          "name": "Two PowerShell automation suites",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-16T02:46:27Z",
+          "completed_at": "2026-10-16T02:46:30Z"
+        },
+        {
+          "name": "Fifty-nine backend tests including approval and generation gates",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-10-16T02:46:30Z",
+          "completed_at": "2026-10-16T02:46:42Z"
+        },
+        {
+          "name": "Generated website build, typecheck and desktop/mobile validation",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-10-16T02:46:42Z",
+          "completed_at": "2026-10-16T02:46:49Z"
+        },
+        {
+          "name": "Upload isolated test evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-16T02:46:49Z",
+          "completed_at": "2026-10-16T02:46:51Z"
+        },
+        {
+          "name": "Post Node.js 24",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 29,
+          "started_at": "2026-10-16T02:46:51Z",
+          "completed_at": "2026-10-16T02:46:51Z"
+        },
+        {
+          "name": "Post Checkout exact triggering commit",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 30,
+          "started_at": "2026-10-16T02:46:51Z",
+          "completed_at": "2026-10-16T02:46:53Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 31,
+          "started_at": "2026-10-16T02:46:53Z",
+          "completed_at": "2026-10-16T02:46:53Z"
+        }
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 12021633272,
+      "name": "stage16-ci-b840d4d764d98d3bbc507d28f033211c6a4c5e94-1",
+      "size": 182889,
+      "expired": false
+    }
+  ],
+  "counts": {
+    "appSuites": 14,
+    "powerShellSuites": 2,
+    "backendTests": 59,
+    "backendPass": 59,
+    "backendFail": 0,
+    "websitePageWidthChecks": 8
   },
-  "remoteMainWorkflowDirectoryLookup": {
-    "status": 404
-  },
-  "workflowListConnector": "Endpoint not supported by connector; no dispatch capability exposed",
-  "runUrl": null,
-  "conclusion": null,
-  "checks": {
-    "typescript": "BLOCKED",
-    "app": "BLOCKED",
-    "backend": "BLOCKED",
-    "approval": "BLOCKED",
-    "website": "BLOCKED"
-  },
-  "reason": "Exact tested commit is local-only and no existing workflow definition is present locally or in fetched remote main tree. No existing exact-commit CI can be triggered.",
-  "smallestAction": "Provide/configure a non-deploying CI workflow with the necessary backend/test fixtures, and make the reviewed exact feature commit available to that CI. No workflow created or source pushed in this task."
+  "remoteLogAssertions": [
+    "2026-10-16T02:46:27.2721876Z PASS: all14 committed app regression suites",
+    "2026-10-16T02:46:29.3723850Z PASS: connected-device selection, changed wireless port discovery, pairing-port exclusion, offline rejection, ambiguity and explicit serial handling",
+    "2026-10-16T02:46:29.8309434Z PASS: cache removal precedes fresh hierarchy capture",
+    "2026-10-16T02:46:29.8449873Z PASS: exit-zero idle error blocks without reading stale XML",
+    "2026-10-16T02:46:30.8026002Z PASS: malformed fresh XML blocks inspection",
+    "2026-10-16T02:46:42.3879645Z # tests 59",
+    "2026-10-16T02:46:42.3879967Z # pass 59",
+    "2026-10-16T02:46:42.3880120Z # fail 0",
+    "2026-10-16T02:46:42.3881717Z PASS: exact59 backend tests including approval/generation/Bridge gates",
+    "2026-10-16T02:46:49.2349429Z PASS: generated four-page fixture build/typecheck and8 desktop/mobile browser checks"
+  ],
+  "localJobLog": "D:/Android/stage16-remote-ci/job-116784013814.log",
+  "startedAt": "2026-10-16T02:44:55Z",
+  "updatedAt": "2026-10-16T02:46:56Z",
+  "localJobLogSha256": "91e103214203a535ab84f71df828e6d439fd819273edbb8049236e785e6b6ef4"
 }
