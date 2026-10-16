@@ -1,0 +1,16 @@
+{
+  "businessName": "Fictional CI Digital Studio",
+  "description": "FICTIONAL CI FIXTURE ONLY. No customer data. No publishing authorized.",
+  "productsServices": "Fictional web service;Fictional mobile service;Fictional automation service",
+  "framework": "STATIC_HTML",
+  "language": "en",
+  "pages": [
+    "home",
+    "services",
+    "about",
+    "contact"
+  ],
+  "websiteType": "BUSINESS",
+  "website": "https://example.test",
+  "design": {}
+}

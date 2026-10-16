@@ -1,5 +1,5 @@
 ﻿const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os'),cp=require('node:child_process');
-const root=process.env.ONELEADQ_BACKEND_ROOT||path.resolve(__dirname,'../../oneleadq-ai-agent');const lifecycle=require(path.join(root,'webDevelopment/lifecycle')),design=require(path.join(root,'webDevelopment/design')),runtime=require(path.join(root,'webDevelopment/runtime'));
+const root=require('./stage16-backend-root.cjs');const lifecycle=require(path.join(root,'webDevelopment/lifecycle')),design=require(path.join(root,'webDevelopment/design')),runtime=require(path.join(root,'webDevelopment/runtime'));
 const req=lifecycle.requirements({businessName:'Fictional QA Digital Studio',description:'FICTIONAL AUTOMATED TEST FIXTURE ONLY. Not a real business. No publishing authorized.',productsServices:'Web Development;Mobile App Development;Business Automation',framework:'STATIC_HTML',language:'en',pages:['home','services','about','contact'],websiteType:'BUSINESS',website:'https://example.test',design:{}});
 // Synthetic approval exists only in this process; no live workflow or approval endpoint is touched.
 const variants=design.variants(req),lock=design.lock(req,variants[0]);const plan=lifecycle.newWebsitePlan(req,{},lock),files=Object.fromEntries(plan.map(x=>[x.file,x.content]));

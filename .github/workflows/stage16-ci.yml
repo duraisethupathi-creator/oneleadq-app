@@ -1,0 +1,83 @@
+﻿name: Stage 16 test-only CI
+on:
+  push:
+    branches: [qa/stage16-20261015]
+    paths-ignore:
+      - reports/**
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: stage16-ci-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  stage16:
+    if: github.ref == 'refs/heads/qa/stage16-20261015'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CI: 'true'
+      ONELEADQ_BACKEND_ROOT: ${{ github.workspace }}/tests/fixtures/oneleadq-ai-agent
+      STAGE15_BRIDGE_ROOT: ${{ github.workspace }}/tests/fixtures/oneleadq-windows-bridge
+    steps:
+      - name: Checkout exact triggering commit
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Record exact SHA and reviewed ancestry
+        run: |
+          New-Item -ItemType Directory -Force artifacts/stage16-ci | Out-Null
+          $actual = git rev-parse HEAD
+          if ($actual -ne $env:GITHUB_SHA) { throw 'Checkout SHA mismatch' }
+          git merge-base --is-ancestor 02abfe0014ad78eb826eb2f42521c3979bb65a83 HEAD
+          if ($LASTEXITCODE) { throw 'Reviewed commit ancestry missing' }
+          @{ testedSha=$actual; reviewedAncestor='02abfe0014ad78eb826eb2f42521c3979bb65a83'; scope='TEST ONLY; NO DEPLOYMENT' } | ConvertTo-Json | Set-Content artifacts/stage16-ci/commit.json
+      - name: Verify committed fixture provenance and isolation
+        run: node scripts/ci-stage16-fixtures.cjs
+      - name: Install app locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install backend fixture locked dependencies
+        working-directory: tests/fixtures/oneleadq-ai-agent
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install Bridge fixture locked dependencies
+        working-directory: tests/fixtures/oneleadq-windows-bridge
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify local Edge renderer
+        run: node -e "if(!require('./tests/fixtures/oneleadq-ai-agent/webDevelopment/reports').browserBinary())throw Error('Local Edge renderer missing')"
+      - name: TypeScript typecheck
+        run: |
+          npm run typecheck 2>&1 | Tee-Object artifacts/stage16-ci/typecheck.log
+          if ($LASTEXITCODE) { throw 'TypeScript failed' }
+      - name: Fourteen app regression suites
+        run: node scripts/ci-stage16-app.cjs
+      - name: Two PowerShell automation suites
+        run: |
+          & pwsh -NoProfile -File scripts/test-android-device-discovery.ps1 2>&1 | Tee-Object artifacts/stage16-ci/device-discovery.log
+          if ($LASTEXITCODE) { throw 'Discovery regression failed' }
+          & pwsh -NoProfile -File scripts/test-android-screen.ps1 2>&1 | Tee-Object artifacts/stage16-ci/fresh-screen.log
+          if ($LASTEXITCODE) { throw 'Fresh-screen regression failed' }
+      - name: Fifty-nine backend tests including approval and generation gates
+        run: node scripts/ci-stage16-backend.cjs
+      - name: Generated website build, typecheck and desktop/mobile validation
+        run: node scripts/ci-stage16-website.cjs
+      - name: Upload isolated test evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: stage16-ci-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            artifacts/stage16-ci/
+            reports/android/precision-generated-site-runtime.json
+            reports/android/precision-generated-site-1280.png
+            reports/android/precision-generated-site-390.png
+          retention-days: 7
+          if-no-files-found: warn

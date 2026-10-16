@@ -28,9 +28,9 @@ async function storedClientGrounding() {
   const store=new Map();
   const defaults=load('src/data/defaultClients.ts').defaultClients;
   const storage=load('src/storage/clientStorage.ts',name=>name==='@react-native-async-storage/async-storage'?{__esModule:true,default:{getItem:async key=>store.get(key)||null,setItem:async(key,value)=>store.set(key,value),removeItem:async key=>store.delete(key)}}:name.endsWith('/defaultClients')?{defaultClients:defaults}:require(name));
-  const {validateConversation}=require('D:/MY AGENT/oneleadq-ai-agent/agents/conversation');
-  const {groundedReply}=require('D:/MY AGENT/oneleadq-ai-agent/agents/grounding');
-  const {webDevelopmentIntent}=require('D:/MY AGENT/oneleadq-ai-agent/agents/webDevelopmentIntent');
+  const {validateConversation}=require(require('node:path').join(require('./stage16-backend-root.cjs'),'agents/conversation'));
+  const {groundedReply}=require(require('node:path').join(require('./stage16-backend-root.cjs'),'agents/grounding'));
+  const {webDevelopmentIntent}=require(require('node:path').join(require('./stage16-backend-root.cjs'),'agents/webDevelopmentIntent'));
   const original=await storage.loadClients();const catchy=original.find(client=>client.id==='catchy-decors');
   assert.equal(catchy.productsServices,undefined,'bundled default does not establish any verified owned offerings');
   const fixtures=[{...catchy,productsServices:['Fixture verified offering A']},{...catchy,id:'fixture-b',name:'Fixture B',productsServices:['Fixture verified offering B']},{...catchy,id:'fixture-empty',name:'No catalogue',productsServices:[]}];

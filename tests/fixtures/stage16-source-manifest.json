@@ -1,0 +1,192 @@
+{
+  "scope": "Immutable test-only snapshot of the backend/Bridge source used by the existing59 tests; not a production checkout or live server.",
+  "backendBaseCommit": "c7e33643c0f807df2a11784e2612a4e32ff11605",
+  "backendIncludesReviewedWorkingTreeChanges": true,
+  "originalReviewedAppCommit": "02abfe0014ad78eb826eb2f42521c3979bb65a83",
+  "excluded": [
+    ".env",
+    "node_modules",
+    "real workspace mappings",
+    "backups",
+    "customer websites",
+    "credentials"
+  ],
+  "files": [
+    {
+      "file": "oneleadq-ai-agent/package.json",
+      "sha256": "4a20eab2e45f02a5a47b45ab98109618dffd8e2c5bc70f4e3e08a095ccfb3a72"
+    },
+    {
+      "file": "oneleadq-ai-agent/package-lock.json",
+      "sha256": "24d8b11b626299c74491e6cd41ae8442d5b92a2f101d383142b7aba2ba8054c3"
+    },
+    {
+      "file": "oneleadq-ai-agent/server.js",
+      "sha256": "4e4fc998329f76299b6b2f99ba71ec854dd5c10ff4fc8c0425576a243f92d410"
+    },
+    {
+      "file": "oneleadq-ai-agent/agents/conversation.js",
+      "sha256": "176988f0b7cb971e1e4dfaa4325fff4b9953e7fdce5475f5fb163b95b8301144"
+    },
+    {
+      "file": "oneleadq-ai-agent/agents/geminiClient.js",
+      "sha256": "45001c3314b203f5bd002beaa192954ce05c79c3bf1d4c041bbeeca681bde1fc"
+    },
+    {
+      "file": "oneleadq-ai-agent/agents/grounding.js",
+      "sha256": "29fca7f83da88f974285ae0c47e11bf8b55d2e20c5dbc10b05e981b6d379574e"
+    },
+    {
+      "file": "oneleadq-ai-agent/agents/prompts.js",
+      "sha256": "0fad1aa99f3cedceffe0b7695539418ae94402fbb75dd2a92fd416cab5f4100f"
+    },
+    {
+      "file": "oneleadq-ai-agent/agents/provider.js",
+      "sha256": "86d3df63662cffd7cf17ed10e38c8a3d62c408041e7d6fe23704c395a364a77a"
+    },
+    {
+      "file": "oneleadq-ai-agent/agents/router.js",
+      "sha256": "13dfbb69f6aefe154f4e1e18e644e20d342e67b57fa3c9e2554eb1e9d8518e57"
+    },
+    {
+      "file": "oneleadq-ai-agent/agents/webDevelopmentIntent.js",
+      "sha256": "ed2abb687a4c2501f7ef340fa470d201bcee8b3f8d63f48b97d0240fcd504ae6"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/aiPlan.js",
+      "sha256": "93bdb249386d47f0f5743d9e091d4ddc4cbcb83a4b239c66f6850c8d8226cc24"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/analysis.js",
+      "sha256": "8b6e49381f5a42d60a41d106d73df2976770d1c895a128180ed877967a3f5ed9"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/audit.js",
+      "sha256": "471cb9662ca8f7e14dc88a8ab4987adab8077fe5dcd552baaa3d1a877b1952fb"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/bridge.js",
+      "sha256": "111df91e506fa11d76babb45037f3c9e15a9f688c2de4ed1db5704affe14b6ef"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/context.js",
+      "sha256": "63e971ebed2679ad994d38ae6b4485b8f060e08f7b31756a4c5f3e7aa36fb250"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/design.js",
+      "sha256": "d2d4cc2f9ba6da376a4b361bad9d4ceae9e6f312e450abb9c153c6975016c56c"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/draftStore.js",
+      "sha256": "672c6085e682e2cdd9c4bc3b42682b5210d74b968ec1a3bfcf8bda6be75ed207"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/frameworks.js",
+      "sha256": "d6c5fc84c86d5cf479a9c92ee90f746857fa729de516873d0e0c2c48ba460b4d"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/lifecycle.js",
+      "sha256": "49a66afc8ff4e5a2e8ffaf6a671b3bb60c72a23e4a3b8c59bbcf5fa228bce462"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/plan.js",
+      "sha256": "6b0333f27dc84c2a6e1396ce5b372e6d6bac5173c383a731bb39ee0275d104f3"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/reports.js",
+      "sha256": "e5f5255b95f058e5877fa08ae61b23d5037fbb53bad81cced95a228cae791763"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/routes.js",
+      "sha256": "bdd4b8dac2eacff1dc0c8aad64b89754b5b189322b8908f940d3750352592edf"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/runtime.js",
+      "sha256": "a648c21dec38e7d13695d3463565d86c6c90275998093f6205c0999bade9cb25"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/safety.js",
+      "sha256": "16ba5e19a9532d0f8f157e69ff42dcdceed550caf6ec08763401cae70a38bb7c"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/session.js",
+      "sha256": "81d7d750fca35ae6fb4133a2e06cbcae978137afa5a9970a9e89ba9316304172"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/staticSite.js",
+      "sha256": "75533de52b599c4b288e5aaca334fb8be851d6b091c414b303a35de838c4fc6f"
+    },
+    {
+      "file": "oneleadq-ai-agent/webDevelopment/workflow.js",
+      "sha256": "86228d13f338659d04cde1d6e63b9087251987e6846d298cd9c867105a1d7967"
+    },
+    {
+      "file": "oneleadq-ai-agent/test/conversation.http.test.js",
+      "sha256": "62979bf7d81d5ec6449f27d54cabe5535e4b33a8505e0206e29d015825109359"
+    },
+    {
+      "file": "oneleadq-ai-agent/test/conversation.test.js",
+      "sha256": "d116157562aed88b6b665c53d6b3d0e5350496f6a00a2e63b832152668b04cdf"
+    },
+    {
+      "file": "oneleadq-ai-agent/test/creation.test.js",
+      "sha256": "3386f331b3a17a75dfb8d47b143453a6002948f16f23387a333cf0bd7278114d"
+    },
+    {
+      "file": "oneleadq-ai-agent/test/lifecycle.test.js",
+      "sha256": "19c8dd6340024e8be4d8048201cfec97c5ada71c1a0cd46012d08a83d53b551d"
+    },
+    {
+      "file": "oneleadq-ai-agent/test/stabilization.test.js",
+      "sha256": "2a67d4ec1d0437653493e9fa1d17066194fd9e267cc0d842dc2c7d0a2dd8d4e5"
+    },
+    {
+      "file": "oneleadq-ai-agent/test/stage16.final.test.js",
+      "sha256": "9d40facc6b246b0c1c1dfbdbdc576dbe44465045353d57a0112b97ccaded1c67"
+    },
+    {
+      "file": "oneleadq-ai-agent/test/webDevelopment.aiPlan.test.js",
+      "sha256": "4c89ee6225a01609e9fc21fce832da6d2f28ddebb752d0faeb5eff13c70d3eb9"
+    },
+    {
+      "file": "oneleadq-ai-agent/test/webDevelopment.bridge.test.js",
+      "sha256": "90e3385d0222f82572f5193e016e3a89543cee143b7f06655980e075ad6cf670"
+    },
+    {
+      "file": "oneleadq-ai-agent/test/webDevelopment.session.test.js",
+      "sha256": "0ff7786980f04ca13d5f8ed86381a57e3ee41234c170d450f3cd7b3f82184175"
+    },
+    {
+      "file": "oneleadq-ai-agent/test/webDevelopment.test.js",
+      "sha256": "c8f2ee816f8685c83fa8fb0cc5e10c522bf37ee026e87e1f531a80e5586fa061"
+    },
+    {
+      "file": "oneleadq-windows-bridge/package.json",
+      "sha256": "e4523e8c42e869fab7ad4c79d24c6364d9731f3e754ca4fd87ac4539f160c027"
+    },
+    {
+      "file": "oneleadq-windows-bridge/package-lock.json",
+      "sha256": "b497541f04498bc36f79082b1bbdd938052cb82344db38cf25721d3c9e970d90"
+    },
+    {
+      "file": "oneleadq-windows-bridge/server.js",
+      "sha256": "b89fac062f2d2131d4f8ea67067db47923801339ddfa878cc1ba29ecd92072ff"
+    },
+    {
+      "file": "oneleadq-windows-bridge/creation.js",
+      "sha256": "9a7b77a676a4a088ba6992cc1e0c041318692c5b25471b260fb7bc749e0aec48"
+    },
+    {
+      "file": "oneleadq-windows-bridge/gitSafety.js",
+      "sha256": "d3eaa2c09a778646aa6e4a44889f58606a71ba9a81df5063e789064c48d2fd04"
+    },
+    {
+      "file": "oneleadq-windows-bridge/updateRecovery.js",
+      "sha256": "92030afd56b28a71031c355fe1d3aca727bdd6d8b59337745117646eeace5cde"
+    },
+    {
+      "file": "oneleadq-windows-bridge/approvalGuards.js",
+      "sha256": "490470049204fbab14e8c6577a8c97531b6bd9e3277c3a4987c5887a1da4b6e2"
+    }
+  ]
+}

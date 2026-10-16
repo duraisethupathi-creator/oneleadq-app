@@ -13,3 +13,6 @@ web-build/
 
 # Local QA evidence may contain client information
 reports/android/
+
+# Generated isolated CI evidence
+/artifacts/
