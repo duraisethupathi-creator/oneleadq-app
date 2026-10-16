@@ -1,5 +1,7 @@
 # Stage 16 remaining work
 
+> Current update — 2026-10-16: Design3 (design-r1-3, revision1) is explicitly human-approved; exact spec/lock validated. Actual existing-pipeline generation produced10 source files at D:/Android/stage16-generated/d48c7136-2066-42e3-9465-317162e0520e-design-r1-3-r1/source. Build/typecheck and7 validation groups PASS, including8 browser page/width checks. Workflow WAITING_FOR_FILE_APPROVAL, granted0/applied0. Local preview http://127.0.0.1:4173/. See [current generation review](stage16-generation-review.md). Earlier entries about missing design approval/live generation are historical and superseded; Stage16 remains PARTIAL pending file review and other acceptance.
+
 Updated 2026-10-16 IST. Continued the existing qa/stage16-20261015 branch from baseline 679161f (prior continuation of af682b7); requested a/stage16-20261015 was absent. Functional source verified through ab74a20. Earlier dirty frontend prerequisites were audited and integrated; unrelated artifacts were preserved. Backend pre-existing dirty work was not edited. No publication, deployment, merge, push, paid inference, real-customer mutation or human approval occurred.
 
 Stage 16 cannot be marked complete yet. Keep gates intact. No new permission is needed for ordinary read-only inspection or isolated fictional tests.

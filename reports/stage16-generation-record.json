@@ -1,0 +1,218 @@
+{
+  "generatedAt": "2026-10-16T01:38:04.698Z",
+  "workflowId": "d48c7136-2066-42e3-9465-317162e0520e",
+  "clientId": "client-1791856192040",
+  "clientName": "Stage 16 test client",
+  "projectId": "stage16-create-test",
+  "designId": "design-r1-3",
+  "designRevision": 1,
+  "specSha256": "4712ee554912d35474df549855fbcceabd6929ba961ae05abcdc016bca78122c",
+  "designLockFingerprint": "32cc335c8855d7b7ae387a62283d59f2e1ce617d3e4b61327352e653f784aa4c",
+  "state": "WAITING_FOR_FILE_APPROVAL",
+  "sourcePath": "D:/Android/stage16-generated/d48c7136-2066-42e3-9465-317162e0520e-design-r1-3-r1/source",
+  "previewUrl": "http://127.0.0.1:4173/",
+  "generationMethod": "Existing live Website workflow architecture -> analyze -> plan (staticSite build) -> propose-files. Exact generated plan bytes exported to local review directory; target workspace unchanged.",
+  "clientRequirements": {
+    "businessName": "Stage 16 test client",
+    "businessType": "",
+    "location": "",
+    "address": "",
+    "phone": "",
+    "email": "",
+    "website": "",
+    "description": "SYNTHETIC QA FIXTURE ONLY. Proposed services: Web Development, Mobile App Development, Business Automation. These are unverified proposals, not real business facts. Do not publish.",
+    "productsServices": "",
+    "designPreference": "",
+    "seoLocation": "",
+    "keywords": "",
+    "assets": "",
+    "framework": "STATIC_HTML",
+    "language": "en",
+    "pages": [
+      "home",
+      "about",
+      "services",
+      "contact"
+    ],
+    "websiteType": "BUSINESS",
+    "design": {
+      "style": "",
+      "primary": "",
+      "accent": "",
+      "tone": "",
+      "typography": "",
+      "corners": "",
+      "animation": "",
+      "density": "",
+      "cta": "",
+      "sections": "",
+      "reference": "",
+      "instruction": "",
+      "assetsAvailability": ""
+    },
+    "assetReferences": []
+  },
+  "fileApprovalsGranted": 0,
+  "targetFilesChanged": 0,
+  "inventory": [
+    {
+      "file": "index.html",
+      "bytes": 4020,
+      "sha256": "5c9af75f58470e81f7b05eb41e3e702d04b99695b83162719481e4f5dc17f2de",
+      "operation": "CREATE",
+      "reason": "Generate page-specific content/SEO and composition from approved design design-r1-3",
+      "approvalId": "e000a522-db5d-4ac8-b2fc-32a85815f5d4",
+      "applied": false
+    },
+    {
+      "file": "about.html",
+      "bytes": 3233,
+      "sha256": "14868c7941794a0d163ec4d9217bff061b63989af880f1cd726ade441fb955bd",
+      "operation": "CREATE",
+      "reason": "Generate page-specific content/SEO and composition from approved design design-r1-3",
+      "approvalId": "72cb4b9b-6a12-4711-95fe-c57838d56562",
+      "applied": false
+    },
+    {
+      "file": "services.html",
+      "bytes": 2650,
+      "sha256": "7aff55292a8fbe5ee7895980062c1aa92c3b338507d6f9cea046ec250c2977b6",
+      "operation": "CREATE",
+      "reason": "Generate page-specific content/SEO and composition from approved design design-r1-3",
+      "approvalId": "bfc951ae-65d1-4208-9a29-ceb68180239e",
+      "applied": false
+    },
+    {
+      "file": "contact.html",
+      "bytes": 3123,
+      "sha256": "fe2340783aff0ad4629a883c436e358ef91ed75b3650c7af195b359b836f2ce0",
+      "operation": "CREATE",
+      "reason": "Generate page-specific content/SEO and composition from approved design design-r1-3",
+      "approvalId": "7b632b66-9b2c-4b8d-b86d-d1a3fcc7b873",
+      "applied": false
+    },
+    {
+      "file": "styles.css",
+      "bytes": 3751,
+      "sha256": "fc08175af0a253c160abc708fd5c2bc7b0fe8e08a3babcb05545516847210dde",
+      "operation": "CREATE",
+      "reason": "Responsive tokens, typography, hierarchy, cards and mobile layout from approved design",
+      "approvalId": "b37cd4ce-6553-47eb-98bd-bba904fefe35",
+      "applied": false
+    },
+    {
+      "file": "site.js",
+      "bytes": 91,
+      "sha256": "c042ceefd9f13f1b6d58fd8da8c0f9024e1ddcfba1bebbba7e4db68383b04c7b",
+      "operation": "CREATE",
+      "reason": "Dependency-free website behaviour",
+      "approvalId": "39123d41-b637-4682-8eb9-5e15e78bacf5",
+      "applied": false
+    },
+    {
+      "file": "design-review.json",
+      "bytes": 625,
+      "sha256": "28dbccb26d073d3ae710b25c9a6c609efc62496582a7c037c7a8460e119b1c94",
+      "operation": "CREATE",
+      "reason": "Optional portable approved-design reference; may be rejected without breaking the website",
+      "approvalId": "5301f578-e6ca-467a-b842-fcf9b55a8a9c",
+      "applied": false
+    },
+    {
+      "file": "validate-site.js",
+      "bytes": 3091,
+      "sha256": "380e6b9b5717cfb4286aaecb2d86c3bafce77d423f513367efdf3b8d34360af0",
+      "operation": "CREATE",
+      "reason": "Read-only structural HTML, metadata, links, JS and crawl-file validation",
+      "approvalId": "84641c22-0354-4fc8-85a7-db64a539dfa2",
+      "applied": false
+    },
+    {
+      "file": "package.json",
+      "bytes": 171,
+      "sha256": "598df57be23d13d7ff8638b64ca74f87e4055eb20ab581c3198b46b355e9f742",
+      "operation": "CREATE",
+      "reason": "Real static-site integrity validation; no compilation or dependency installation",
+      "approvalId": "9214fe09-c441-49ee-87e0-e6919f00cf42",
+      "applied": false
+    },
+    {
+      "file": "robots.txt",
+      "bytes": 23,
+      "sha256": "16ceb5ee3e0dc13aa9adf31a3ebbe45a1d965b8c2b9f72eaf84e5911e140ed95",
+      "operation": "CREATE",
+      "reason": "Explicitly review public crawl policy",
+      "approvalId": "b0590289-aa6b-470b-ac89-c35858e9ffd1",
+      "applied": false
+    }
+  ],
+  "validation": {
+    "workflowId": "d48c7136-2066-42e3-9465-317162e0520e",
+    "designId": "design-r1-3",
+    "revision": 1,
+    "sourcePath": "D:/Android/stage16-generated/d48c7136-2066-42e3-9465-317162e0520e-design-r1-3-r1/source",
+    "results": [
+      {
+        "id": "GEN-BUILD",
+        "feature": "Generated package build",
+        "status": "PASS",
+        "exitCode": 0
+      },
+      {
+        "id": "GEN-TYPECHECK",
+        "feature": "Generated package typecheck",
+        "status": "PASS",
+        "exitCode": 0
+      },
+      {
+        "id": "GEN-IDENTITY",
+        "feature": "Generated source matches approved revision and agent inventory",
+        "status": "PASS"
+      },
+      {
+        "id": "GEN-PAGES",
+        "feature": "Four complete pages and reachable primary CTA destinations",
+        "status": "PASS"
+      },
+      {
+        "id": "GEN-FACTS",
+        "feature": "Missing client facts remain labelled, not fabricated",
+        "status": "PASS"
+      },
+      {
+        "id": "GEN-ACCESSIBILITY",
+        "feature": "Document language, landmarks, heading, focus/reduced motion",
+        "status": "PASS"
+      },
+      {
+        "id": "GEN-RUNTIME",
+        "feature": "Actual four-page browser render/navigation at1280 and390",
+        "status": "PASS",
+        "pageWidthChecks": 8,
+        "errors": 0,
+        "missingResources": 0
+      }
+    ],
+    "counts": {
+      "PASS": 7,
+      "FAIL": 0,
+      "BLOCKED": 0
+    },
+    "notes": [
+      "Static HTML/CSS/JS site; build validates source, no bundler required.",
+      "CTA navigation to Contact works; real enquiries blocked by absent verified contact details and absent form backend.",
+      "No client imagery supplied; labelled CSS placeholders make no image requests.",
+      "Performance and real-device acceptance not measured in this run.",
+      "No file approval or application performed."
+    ]
+  },
+  "validationPath": "D:/Android/stage16-generated/d48c7136-2066-42e3-9465-317162e0520e-design-r1-3-r1/validation-results.json",
+  "runtimePath": "D:/Android/stage16-generated/d48c7136-2066-42e3-9465-317162e0520e-design-r1-3-r1/runtime-results.json",
+  "previewPath": "D:/Android/stage16-generated/d48c7136-2066-42e3-9465-317162e0520e-design-r1-3-r1/source/index.html",
+  "previewServerScript": "D:/Android/stage16-generated-preview.cjs",
+  "limitations": [
+    "Synthetic fixture only; service catalogue/contact/imagery absent in saved requirements.",
+    "No real enquiry backend; Contact CTA navigation only.",
+    "No target workspace writes, file approvals, publishing or deployment."
+  ]
+}
