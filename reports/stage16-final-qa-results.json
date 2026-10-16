@@ -284,5 +284,282 @@
   "commitReferences": [
     "2701c2e",
     "ece3672"
-  ]
+  ],
+  "closure": {
+    "testedCommit": "02abfe0014ad78eb826eb2f42521c3979bb65a83",
+    "native": {
+      "counts": {
+        "PASS": 12,
+        "FAIL": 0,
+        "NOT_RUN": 0
+      },
+      "checkpoints": [
+        {
+          "id": "N01",
+          "feature": "Actual OneLeadQ launch",
+          "expected": "Actual physical device evidence",
+          "actual": "App visible",
+          "status": "PASS",
+          "method": "Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan",
+          "evidence": "D:/Android/stage16-closure-navigation/home.xml/png",
+          "fixCommit": null
+        },
+        {
+          "id": "N02",
+          "feature": "Stage16 client selection",
+          "expected": "Actual physical device evidence",
+          "actual": "Exact fixture selected",
+          "status": "PASS",
+          "method": "Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan",
+          "evidence": "D:/Android/stage16-closure-navigation/fixture.xml/png",
+          "fixCommit": null
+        },
+        {
+          "id": "N03",
+          "feature": "Website Agent routing",
+          "expected": "Actual physical device evidence",
+          "actual": "Deterministic route and exact client handoff",
+          "status": "PASS",
+          "method": "Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan",
+          "evidence": "D:/Android/stage16-closure-navigation/ai-routing.xml/png; website-handoff.xml/png",
+          "fixCommit": null
+        },
+        {
+          "id": "N04",
+          "feature": "Three existing variants",
+          "expected": "Actual physical device evidence",
+          "actual": "All names/version IDs/revision1 visible",
+          "status": "PASS",
+          "method": "Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan",
+          "evidence": "D:/Android/stage16-closure-native/inspection-0.xml/png",
+          "fixCommit": "02abfe0014ad78eb826eb2f42521c3979bb65a83"
+        },
+        {
+          "id": "N05",
+          "feature": "Design3 lock",
+          "expected": "Actual physical device evidence",
+          "actual": "design-r1-3 revision1 SELECTED AND LOCKED",
+          "status": "PASS",
+          "method": "Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan",
+          "evidence": "D:/Android/stage16-closure-native/inspection-0.xml/png",
+          "fixCommit": null
+        },
+        {
+          "id": "N06",
+          "feature": "Generation record",
+          "expected": "Actual physical device evidence",
+          "actual": "Exact workflow VALIDATION_PASSED; CREATE_NEW and actual generated proposals",
+          "status": "PASS",
+          "method": "Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan",
+          "evidence": "D:/Android/stage16-closure-native/header.xml/png; inspection-0.xml/png; inspection-2.xml/png",
+          "fixCommit": null
+        },
+        {
+          "id": "N07",
+          "feature": "Ten generated files",
+          "expected": "Actual physical device evidence",
+          "actual": "Ten distinct CREATE entries observed",
+          "status": "PASS",
+          "method": "Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan",
+          "evidence": "D:/Android/stage16-closure-native/inspection-2..4.xml/png; results.json",
+          "fixCommit": null
+        },
+        {
+          "id": "N08",
+          "feature": "Ten applied approvals",
+          "expected": "Actual physical device evidence",
+          "actual": "Count10/10; all exact IDs/hashes APPLIED",
+          "status": "PASS",
+          "method": "Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan",
+          "evidence": "D:/Android/stage16-closure-native/inspection-1..2.xml/png; results.json",
+          "fixCommit": "02abfe0014ad78eb826eb2f42521c3979bb65a83"
+        },
+        {
+          "id": "N09",
+          "feature": "Current workflow state",
+          "expected": "Actual physical device evidence",
+          "actual": "Exact workflow ID and VALIDATION_PASSED",
+          "status": "PASS",
+          "method": "Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan",
+          "evidence": "D:/Android/stage16-closure-native/header.xml/png",
+          "fixCommit": null
+        },
+        {
+          "id": "N10",
+          "feature": "Back/transitions",
+          "expected": "Actual physical device evidence",
+          "actual": "Website modal closes to actual AI screen",
+          "status": "PASS",
+          "method": "Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan",
+          "evidence": "D:/Android/stage16-closure-native/back.xml/png",
+          "fixCommit": null
+        },
+        {
+          "id": "N11",
+          "feature": "Assistant critical controls",
+          "expected": "Actual physical device evidence",
+          "actual": "Zero measured intersections among6 controls; no mascot inside modal",
+          "status": "PASS",
+          "method": "Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan",
+          "evidence": "D:/Android/stage16-closure-navigation/results.json; D:/Android/stage16-closure-native/inspection-0..4.png",
+          "fixCommit": null
+        },
+        {
+          "id": "N12",
+          "feature": "Crashes/critical UI",
+          "expected": "Actual physical device evidence",
+          "actual": "Zero bounded fatal signatures and no critical UI error marker in captures",
+          "status": "PASS",
+          "method": "Wireless ADB; fresh UIAutomator XML, screenshots and bounded log scan",
+          "evidence": "D:/Android/stage16-closure-navigation/results.json; D:/Android/stage16-closure-native/results.json",
+          "fixCommit": null
+        }
+      ],
+      "detail": {
+        "testedCommit": "02abfe0014ad78eb826eb2f42521c3979bb65a83",
+        "workflowId": "d48c7136-2066-42e3-9465-317162e0520e",
+        "workflowState": "VALIDATION_PASSED",
+        "variants": {
+          "design-r1-2": "Immersive · Business / Corporate\nVersion: design-r1-2 | Revision: 1\nNot selected",
+          "design-r1-1": "Editorial · Business / Corporate\nVersion: design-r1-1 | Revision: 1\nNot selected",
+          "design-r1-3": "Conversion · Business / Corporate\nVersion: design-r1-3 | Revision: 1\nSELECTED AND LOCKED"
+        },
+        "variantCount": 3,
+        "selectedAndLocked": true,
+        "appliedCountLabel": true,
+        "appliedApprovals": [
+          {
+            "file": "services.html",
+            "approvalId": "bfc951ae-65d1-4208-9a29-ceb68180239e",
+            "sha256": "7aff55292a8fbe5ee7895980062c1aa92c3b338507d6f9cea046ec250c2977b6",
+            "status": "APPLIED",
+            "screen": "inspection-1"
+          },
+          {
+            "file": "contact.html",
+            "approvalId": "7b632b66-9b2c-4b8d-b86d-d1a3fcc7b873",
+            "sha256": "fe2340783aff0ad4629a883c436e358ef91ed75b3650c7af195b359b836f2ce0",
+            "status": "APPLIED",
+            "screen": "inspection-1"
+          },
+          {
+            "file": "package.json",
+            "approvalId": "9214fe09-c441-49ee-87e0-e6919f00cf42",
+            "sha256": "598df57be23d13d7ff8638b64ca74f87e4055eb20ab581c3198b46b355e9f742",
+            "status": "APPLIED",
+            "screen": "inspection-2"
+          },
+          {
+            "file": "robots.txt",
+            "approvalId": "b0590289-aa6b-470b-ac89-c35858e9ffd1",
+            "sha256": "16ceb5ee3e0dc13aa9adf31a3ebbe45a1d965b8c2b9f72eaf84e5911e140ed95",
+            "status": "APPLIED",
+            "screen": "inspection-2"
+          },
+          {
+            "file": "about.html",
+            "approvalId": "72cb4b9b-6a12-4711-95fe-c57838d56562",
+            "sha256": "14868c7941794a0d163ec4d9217bff061b63989af880f1cd726ade441fb955bd",
+            "status": "APPLIED",
+            "screen": "inspection-1"
+          },
+          {
+            "file": "site.js",
+            "approvalId": "39123d41-b637-4682-8eb9-5e15e78bacf5",
+            "sha256": "c042ceefd9f13f1b6d58fd8da8c0f9024e1ddcfba1bebbba7e4db68383b04c7b",
+            "status": "APPLIED",
+            "screen": "inspection-2"
+          },
+          {
+            "file": "styles.css",
+            "approvalId": "b37cd4ce-6553-47eb-98bd-bba904fefe35",
+            "sha256": "fc08175af0a253c160abc708fd5c2bc7b0fe8e08a3babcb05545516847210dde",
+            "status": "APPLIED",
+            "screen": "inspection-2"
+          },
+          {
+            "file": "index.html",
+            "approvalId": "e000a522-db5d-4ac8-b2fc-32a85815f5d4",
+            "sha256": "5c9af75f58470e81f7b05eb41e3e702d04b99695b83162719481e4f5dc17f2de",
+            "status": "APPLIED",
+            "screen": "inspection-1"
+          },
+          {
+            "file": "validate-site.js",
+            "approvalId": "84641c22-0354-4fc8-85a7-db64a539dfa2",
+            "sha256": "380e6b9b5717cfb4286aaecb2d86c3bafce77d423f513367efdf3b8d34360af0",
+            "status": "APPLIED",
+            "screen": "inspection-2"
+          },
+          {
+            "file": "design-review.json",
+            "approvalId": "5301f578-e6ca-467a-b842-fcf9b55a8a9c",
+            "sha256": "28dbccb26d073d3ae710b25c9a6c609efc62496582a7c037c7a8460e119b1c94",
+            "status": "APPLIED",
+            "screen": "inspection-2"
+          }
+        ],
+        "appliedCount": 10,
+        "nativeCreateInventory": [
+          "index.html",
+          "about.html",
+          "services.html",
+          "contact.html",
+          "styles.css",
+          "site.js",
+          "design-review.json",
+          "validate-site.js",
+          "package.json",
+          "robots.txt"
+        ],
+        "inventoryCount": 10,
+        "backPass": true,
+        "uiErrors": 0,
+        "fatalExceptions": 0,
+        "screens": [
+          "header",
+          "inspection-0",
+          "inspection-1",
+          "inspection-2",
+          "inspection-3",
+          "inspection-4",
+          "back"
+        ],
+        "status": "PASS"
+      },
+      "rawNavigationCounts": {
+        "PASS": 19,
+        "NOT RUN": 1
+      }
+    },
+    "ci": {
+      "status": "BLOCKED",
+      "testedCommit": "02abfe0014ad78eb826eb2f42521c3979bb65a83",
+      "branch": "qa/stage16-20261015",
+      "remoteMain": "20624b2262344bb501d0ed9dfb9e886269c720e1",
+      "remoteBranchPresent": false,
+      "localWorkflowsPresent": false,
+      "remoteMainWorkflowTree": [],
+      "githubCommitLookup": {
+        "status": 422,
+        "message": "No commit found for SHA: 02abfe0014ad78eb826eb2f42521c3979bb65a83"
+      },
+      "remoteMainWorkflowDirectoryLookup": {
+        "status": 404
+      },
+      "workflowListConnector": "Endpoint not supported by connector; no dispatch capability exposed",
+      "runUrl": null,
+      "conclusion": null,
+      "checks": {
+        "typescript": "BLOCKED",
+        "app": "BLOCKED",
+        "backend": "BLOCKED",
+        "approval": "BLOCKED",
+        "website": "BLOCKED"
+      },
+      "reason": "Exact tested commit is local-only and no existing workflow definition is present locally or in fetched remote main tree. No existing exact-commit CI can be triggered.",
+      "smallestAction": "Provide/configure a non-deploying CI workflow with the necessary backend/test fixtures, and make the reviewed exact feature commit available to that CI. No workflow created or source pushed in this task."
+    },
+    "completion": "PARTIAL"
+  }
 }

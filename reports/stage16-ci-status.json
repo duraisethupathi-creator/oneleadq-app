@@ -1,0 +1,28 @@
+{
+  "status": "BLOCKED",
+  "testedCommit": "02abfe0014ad78eb826eb2f42521c3979bb65a83",
+  "branch": "qa/stage16-20261015",
+  "remoteMain": "20624b2262344bb501d0ed9dfb9e886269c720e1",
+  "remoteBranchPresent": false,
+  "localWorkflowsPresent": false,
+  "remoteMainWorkflowTree": [],
+  "githubCommitLookup": {
+    "status": 422,
+    "message": "No commit found for SHA: 02abfe0014ad78eb826eb2f42521c3979bb65a83"
+  },
+  "remoteMainWorkflowDirectoryLookup": {
+    "status": 404
+  },
+  "workflowListConnector": "Endpoint not supported by connector; no dispatch capability exposed",
+  "runUrl": null,
+  "conclusion": null,
+  "checks": {
+    "typescript": "BLOCKED",
+    "app": "BLOCKED",
+    "backend": "BLOCKED",
+    "approval": "BLOCKED",
+    "website": "BLOCKED"
+  },
+  "reason": "Exact tested commit is local-only and no existing workflow definition is present locally or in fetched remote main tree. No existing exact-commit CI can be triggered.",
+  "smallestAction": "Provide/configure a non-deploying CI workflow with the necessary backend/test fixtures, and make the reviewed exact feature commit available to that CI. No workflow created or source pushed in this task."
+}
