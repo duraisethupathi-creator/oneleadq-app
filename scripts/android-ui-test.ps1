@@ -113,7 +113,7 @@ try {
   Record 'Assistant launcher overlap with visible controls' $(if($overlaps.Count){'FAIL'}else{'PASS'}) "$($overlaps.Count) intersections among $($controls.Count) visible Generate/navigation touch targets; response/keyboard checked separately"
  }else{Record 'Assistant overlap with visible controls' BLOCKED 'Assistant or controls not accessible'}
 
- Record 'Live final website generation' BLOCKED 'BLOCKED BY HUMAN APPROVAL. Preapproval generation/selection is covered separately; this runner never approves or publishes'
+ Record 'Live final website generation' 'NOT RUN' 'This navigation runner does not inspect or change live workflow approval/generation state. Report those results from the exact workflow API and native workspace checks; no approval or publication attempted here.'
  # Capture crash signatures only; do not export arbitrary application logs or prompts.
  $crashes=AdbCall -Arguments @('logcat','-d','-t','500','AndroidRuntime:E','*:S')
  $count=@($crashes | Select-String 'FATAL EXCEPTION').Count
