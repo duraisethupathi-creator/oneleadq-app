@@ -1,0 +1,14 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+const dir=path.resolve('artifacts/android-apk-ci'),apk=path.join(dir,'apk/OneLeadQ-development.apk');
+const signing=fs.readFileSync(path.join(dir,'signing-certificate.txt'),'utf8');
+const fingerprints=[...signing.matchAll(/Signer #\d+ certificate SHA-256 digest:\s*([a-f\d]{64})/gi)].map(m=>m[1].toLowerCase());
+if(!fingerprints.length)throw Error('Verified APK signer fingerprint missing; refuse evidence PASS');
+const packageInfo=fs.readFileSync(path.join(dir,'apk-package.txt'),'utf8');
+if(!/package: name='com\.oneleadq\.app'/.test(packageInfo))throw Error('Wrong APK application ID');
+const sha256=crypto.createHash('sha256').update(fs.readFileSync(apk)).digest('hex');
+fs.writeFileSync(path.join(dir,'APK.sha256'),sha256+'  apk/OneLeadQ-development.apk\n');
+fs.writeFileSync(path.join(dir,'inspection.json'),JSON.stringify({sourceSha:process.env.GITHUB_SHA||null,packageId:'com.oneleadq.app',sha256,signerCertificateSha256:fingerprints,signingStrategy:'Expo template development/debug signing; not a production or continuity signing identity',installedAppEvidence:'Earlier device signing scheme v2 and short PackageSignatures hash 4eed0890; no verified full certificate SHA256 available',signingCompatibility:'UNVERIFIED',installation:'BLOCKED - require verified installed certificate comparison and separate approval',physicalReconnection:'NOT TESTED'},null,2));
+const files=['apk/OneLeadQ-development.apk',...fs.readdirSync(dir).filter(n=>/\.(json|txt)$/.test(n)),...fs.readdirSync(path.join(dir,'logs')).filter(n=>n.endsWith('.log')).map(n=>'logs/'+n)].sort();
+fs.writeFileSync(path.join(dir,'SHA256SUMS.sha256'),files.map(n=>crypto.createHash('sha256').update(fs.readFileSync(path.join(dir,n))).digest('hex')+'  '+n).join('\n')+'\n');
+console.log('APK metadata recorded. Installation BLOCKED: installed certificate comparison is unverified.');
