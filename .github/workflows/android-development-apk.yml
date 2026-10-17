@@ -1,0 +1,129 @@
+name: Android development APK (manual, artifact only)
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact reviewed 40-character commit SHA on the selected ref
+        required: true
+        type: string
+      accept_sdk_licenses:
+        description: Authorize required Google Android SDK package licenses for this build
+        required: true
+        default: false
+        type: boolean
+permissions:
+  contents: read
+concurrency:
+  group: android-development-apk-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  apk:
+    if: github.event_name == 'workflow_dispatch' && inputs.accept_sdk_licenses == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    env:
+      CI: '1'
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      CMAKE_VERSION: '3.30.5'
+      CMAKE_BUILD_PARALLEL_LEVEL: '1'
+      GRADLE_USER_HOME: ${{ runner.temp }}/oneleadq-gradle
+    steps:
+      - name: Checkout exact triggering source without stored credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Verify reviewed SHA and prepare evidence directory
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "${EXPECTED_SHA,,}" = "$GITHUB_SHA"
+          mkdir -p artifacts/android-apk-ci/logs artifacts/android-apk-ci/apk
+          printf '%s\n' "$GITHUB_SHA" > artifacts/android-apk-ci/source-sha.txt
+          sha256sum .github/workflows/stage16-ci.yml > artifacts/android-apk-ci/stage16-ci-before.sha256
+      - name: Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Select hosted JDK 17 and Android command-line tools
+        run: |
+          set -euo pipefail
+          export JAVA_HOME="${JAVA_HOME_17_X64:?Hosted JDK17 missing}"
+          export PATH="$JAVA_HOME/bin:$PATH"
+          test -x "${ANDROID_HOME:?Hosted SDK missing}/cmdline-tools/latest/bin/sdkmanager"
+          java -version 2>&1 | tee artifacts/android-apk-ci/logs/java.log
+          java -version 2>&1 | grep -Eq 'version "17\.'
+          printf 'JAVA_HOME=%s\nANDROID_SDK_ROOT=%s\n' "$JAVA_HOME" "$ANDROID_HOME" >> "$GITHUB_ENV"
+          printf '%s/bin\n' "$JAVA_HOME" >> "$GITHUB_PATH"
+      - name: Install pinned SDK packages on cloud runner only
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          # The explicit manual license input authorizes this noninteractive acceptance.
+          set +o pipefail
+          yes | "$SDKMANAGER" --licenses > artifacts/android-apk-ci/logs/sdk-licenses.log 2>&1
+          license_status=${PIPESTATUS[1]}
+          set -o pipefail
+          test "$license_status" -eq 0
+          "$SDKMANAGER" --install 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.1.12297006' 'cmake;3.30.5' 'platform-tools' 2>&1 | tee artifacts/android-apk-ci/logs/sdk-install.log
+          "$SDKMANAGER" --list_installed > artifacts/android-apk-ci/sdk-packages.txt
+      - name: Install locked dependencies without lifecycle scripts
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund 2>&1 | tee artifacts/android-apk-ci/logs/npm-ci.log
+      - name: TypeScript and focused platform-independent source tests
+        run: |
+          set -euo pipefail
+          node node_modules/typescript/bin/tsc --noEmit 2>&1 | tee artifacts/android-apk-ci/logs/typecheck.log
+          node --test scripts/test-trusted-devices.cjs scripts/test-trusted-mobile.cjs scripts/test-windows-mobile.cjs 2>&1 | tee artifacts/android-apk-ci/logs/source-tests.log
+          node node_modules/expo-modules-autolinking/bin/expo-modules-autolinking.js resolve --platform android --json > artifacts/android-apk-ci/autolinking.json
+          node -e "const a=require('./artifacts/android-apk-ci/autolinking.json');if(!a.modules.some(m=>m.packageName==='oneleadq-trust'&&m.projects.some(p=>p.modules.some(c=>c.classifier==='expo.modules.oneleadqtrust.OneLeadQTrustModule'))))throw Error('Native module missing')"
+      - name: Prebuild and compile ARM64 development APK
+        run: |
+          set -euo pipefail
+          node scripts/build-android-development.cjs 2>&1 | tee artifacts/android-apk-ci/logs/build.log
+      - name: Native module and app lint / available native unit tests
+        working-directory: artifacts/batch3/android-development-build/android
+        run: |
+          set -euo pipefail
+          ./gradlew :oneleadq-trust:lintDebug :oneleadq-trust:testDebugUnitTest :app:lintDebug --no-daemon -PreactNativeArchitectures=arm64-v8a 2>&1 | tee "$GITHUB_WORKSPACE/artifacts/android-apk-ci/logs/native-validation.log"
+          # NO-SOURCE is not evidence of native unit-test coverage; preserve that fact in logs.
+      - name: Inspect APK package, native classes and public signing certificate
+        run: |
+          set -euo pipefail
+          APK=artifacts/batch3/android-development-build/android/app/build/outputs/apk/debug/app-debug.apk
+          TOOLS="$ANDROID_HOME/build-tools/36.0.0"
+          ANALYZER="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
+          "$TOOLS/apksigner" verify --verbose --print-certs "$APK" > artifacts/android-apk-ci/signing-certificate.txt
+          "$TOOLS/aapt" dump badging "$APK" > artifacts/android-apk-ci/apk-package.txt
+          grep -q "package: name='com.oneleadq.app'" artifacts/android-apk-ci/apk-package.txt
+          "$ANALYZER" dex packages --defined-only "$APK" > artifacts/android-apk-ci/native-packaging.txt
+          grep -q 'OneLeadQTrustModule' artifacts/android-apk-ci/native-packaging.txt
+          cp "$APK" artifacts/android-apk-ci/apk/OneLeadQ-development.apk
+          cp artifacts/batch3/android-development-build/build-result.json artifacts/android-apk-ci/build-result.json
+          node scripts/record-android-apk-evidence.cjs
+      - name: Verify existing Stage16 workflow unchanged
+        if: always()
+        run: |
+          set -euo pipefail
+          if test -f artifacts/android-apk-ci/stage16-ci-before.sha256; then
+            sha256sum --check artifacts/android-apk-ci/stage16-ci-before.sha256
+          fi
+      - name: Upload only APK and selected evidence (never staging/keystores)
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: android-development-apk-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            artifacts/android-apk-ci/apk/*.apk
+            artifacts/android-apk-ci/logs/*.log
+            artifacts/android-apk-ci/*.json
+            artifacts/android-apk-ci/*.txt
+            artifacts/android-apk-ci/*.sha256
+          retention-days: 7
+          if-no-files-found: warn
+          include-hidden-files: false
