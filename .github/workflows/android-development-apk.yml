@@ -90,7 +90,17 @@ jobs:
         working-directory: artifacts/batch3/android-development-build/android
         run: |
           set -euo pipefail
-          ./gradlew :oneleadq-trust:lintDebug :oneleadq-trust:testDebugUnitTest :app:lintDebug --no-daemon -PreactNativeArchitectures=arm64-v8a 2>&1 | tee "$GITHUB_WORKSPACE/artifacts/android-apk-ci/logs/native-validation.log"
+          # Work around the third-party K2 Gradle-script analysis crash; retain all lint tasks.
+          cat > "$RUNNER_TEMP/worklets-lint.init.gradle" <<'GRADLE'
+          allprojects { candidate ->
+              if (candidate.path == ':react-native-worklets') {
+                  candidate.plugins.withId('com.android.library') {
+                      candidate.extensions.getByName('android').experimentalProperties.put('android.lint.useK2Uast', false)
+                  }
+              }
+          }
+          GRADLE
+          ./gradlew :oneleadq-trust:lintDebug :oneleadq-trust:testDebugUnitTest :app:lintDebug --init-script "$RUNNER_TEMP/worklets-lint.init.gradle" --no-daemon -PreactNativeArchitectures=arm64-v8a 2>&1 | tee "$GITHUB_WORKSPACE/artifacts/android-apk-ci/logs/native-validation.log"
           # NO-SOURCE is not evidence of native unit-test coverage; preserve that fact in logs.
       - name: Inspect APK package, native classes and public signing certificate
         run: |
