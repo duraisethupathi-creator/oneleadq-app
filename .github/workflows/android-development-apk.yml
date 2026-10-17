@@ -29,7 +29,7 @@ jobs:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
       CMAKE_VERSION: '3.30.5'
       CMAKE_BUILD_PARALLEL_LEVEL: '1'
-      GRADLE_USER_HOME: ${{ runner.temp }}/oneleadq-gradle
+      GRADLE_USER_HOME: ${{ github.workspace }}/artifacts/android-gradle-cache
     steps:
       - name: Checkout exact triggering source without stored credentials
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
