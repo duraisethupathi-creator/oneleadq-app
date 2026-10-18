@@ -6,12 +6,13 @@
     "orientation": "portrait",
     "scheme": "oneleadq",
     "userInterfaceStyle": "automatic",
-        "android": {
+    "android": {
       "package": "com.oneleadq.app",
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "android.permission.RECORD_AUDIO"
-      ]
+      ],
+      "versionCode": 2
     },
     "web": {
       "bundler": "metro"
