@@ -1,0 +1,24 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript');
+test('Android worker session rejects expired/cross-client/aborted pairing and unsafe commands',async()=>{
+  const source=fs.readFileSync(require.resolve('../src/services/windowsWorker.ts'),'utf8');
+  const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+  let now=100000,answer,calls=[];const exports={};
+  vm.runInNewContext(js,{exports,Date:{now:()=>now},AbortController,setTimeout,clearTimeout,fetch:async(url,options)=>{calls.push({url,options});return {ok:true,status:200,json:async()=>answer};}});
+  const pair={ok:true,sessionToken:'synthetic-session-token',expiresAt:now+60000,clientId:'client-a',projectId:'site-a',scope:['web-development']};
+  answer={...pair,clientId:'client-b'};await assert.rejects(exports.pairWindowsWorker('123456','client-a','site-a'),/different client/);
+  let count=calls.length;await assert.rejects(exports.listWindowsJobs('client-a','site-a'),/Pair/);assert.equal(calls.length,count);
+  answer=pair;await exports.pairWindowsWorker('123456','client-a','site-a');
+  count=calls.length;await assert.rejects(exports.startWindowsJob('client-a','site-a','npm-test & whoami'),/allowlisted/);assert.equal(calls.length,count);
+  answer={ok:true,jobs:[{id:'11111111-1111-4111-8111-111111111111',clientId:'client-b',projectId:'site-a',state:'PASSED',logs:[]}]};
+  await assert.rejects(exports.listWindowsJobs('client-a','site-a'),/wrong-client/);
+  count=calls.length;await assert.rejects(exports.listWindowsJobs('client-b','site-a'),/Pair/);assert.equal(calls.length,count,'client switch clears authority before transport');
+  answer=pair;await exports.pairWindowsWorker('123456','client-a','site-a');now+=40000;
+  count=calls.length;await assert.rejects(exports.listWindowsJobs('client-a','site-a'),/Pair/);assert.equal(calls.length,count,'expiry fails before transport');
+  now=100000;answer=pair;const aborted=new AbortController();aborted.abort();await assert.rejects(exports.pairWindowsWorker('123456','client-a','site-a',aborted.signal),/different client/);
+  count=calls.length;await assert.rejects(exports.listWindowsJobs('client-a','site-a'),/Pair/);assert.equal(calls.length,count);
+  answer=pair;await exports.pairWindowsWorker('123456','client-a','site-a');
+  const job={id:'11111111-1111-4111-8111-111111111111',clientId:'client-a',projectId:'site-a',commandId:'npm-typecheck',state:'RUNNING',exitCode:null,logs:[{sequence:1,at:'fixture',text:'SAFE'}]};
+  answer={ok:true,job};assert.equal((await exports.startWindowsJob('client-a','site-a','npm-typecheck')).id,job.id);assert.equal(calls.at(-1).options.headers.Authorization,'Bearer synthetic-session-token');assert.deepEqual(JSON.parse(calls.at(-1).options.body),{commandId:'npm-typecheck'});
+  await exports.cancelWindowsJob('client-a','site-a',job.id);assert.match(calls.at(-1).url,/\/cancel$/);
+  exports.disconnectWindowsWorker();await assert.rejects(exports.listWindowsJobs('client-a','site-a'),/Pair/);
+});
