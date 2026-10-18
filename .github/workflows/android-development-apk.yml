@@ -93,7 +93,7 @@ jobs:
           # Work around the third-party K2 Gradle-script analysis crash; retain all lint tasks.
           cat > "$RUNNER_TEMP/worklets-lint.init.gradle" <<'GRADLE'
           allprojects { candidate ->
-              if (candidate.path == ':react-native-worklets') {
+              if (candidate.path in [':react-native-worklets', ':react-native-reanimated']) {
                   candidate.plugins.withId('com.android.library') {
                       candidate.extensions.getByName('android').experimentalProperties.put('android.lint.useK2Uast', false)
                   }
