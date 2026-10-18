@@ -239,7 +239,7 @@ jobs:
       run:
         shell: bash
     env:
-      SIGNING_DIR: ${{ runner.temp }}/oneleadq-signing
+      SIGNING_DIR: ${{ github.workspace }}/.oneleadq-signing
       EXPECTED_SHA: ${{ needs.authorize.outputs.source_sha }}
     steps:
       # Never checkout or execute application code on the signing runner.
