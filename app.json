@@ -12,7 +12,7 @@
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ],
-      "versionCode": 2
+      "versionCode": 3
     },
     "web": {
       "bundler": "metro"
@@ -20,7 +20,8 @@
     "plugins": [
       "@react-native-community/datetimepicker",
       "expo-speech-recognition",
-      "expo-router"
+      "expo-router",
+      "./plugins/withAiNetworkSecurity.cjs"
     ],
     "extra": {
       "eas": {

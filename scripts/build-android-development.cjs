@@ -12,7 +12,7 @@ function main(){
   if(!sdk||!fs.existsSync(path.join(sdk,'platforms','android-36'))||!fs.existsSync(path.join(sdk,'build-tools','36.0.0')))throw Error('BLOCKED: Android SDK platform 36/build-tools 36.0.0 unavailable at configured SDK path.');
  }
  fs.mkdirSync(stage,{recursive:true});
- for(const name of ['app.json','package.json','package-lock.json','tsconfig.json','app','src','modules','assets','asset']){const source=path.join(root,name);if(fs.existsSync(source))fs.cpSync(source,path.join(stage,name),{recursive:true});}
+ for(const name of ['app.json','package.json','package-lock.json','tsconfig.json','app','src','modules','assets','asset','plugins']){const source=path.join(root,name);if(fs.existsSync(source))fs.cpSync(source,path.join(stage,name),{recursive:true});}
  const dependencies=path.join(stage,'node_modules');if(!fs.existsSync(dependencies))fs.symlinkSync(path.join(root,'node_modules'),dependencies,process.platform==='win32'?'junction':'dir');
  run(process.execPath,[path.join(root,'node_modules/expo/bin/cli'),'prebuild',stage,'--platform','android','--no-install','--template',path.join(root,'node_modules/expo/template.tgz')]);
  // Limit only this generated build, not user-wide Gradle or application source settings.
