@@ -341,7 +341,8 @@ jobs:
           grep -Eq "^package: name='com\.oneleadq\.app' versionCode='3'" artifacts/android-production-ci/evidence/apk-package.txt
           "$TOOLS/aapt" dump xmltree "$OUT" AndroidManifest.xml > artifacts/android-production-ci/evidence/apk-manifest-tree.txt
           "$TOOLS/aapt" dump resources "$OUT" > signed-resources.txt
-          "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" resources xml --file /res/xml/oneleadq_ai_network_security.xml "$OUT" > artifacts/android-production-ci/evidence/apk-network-policy.txt
+          POLICY_PATH="$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" resources value --config default --name oneleadq_ai_network_security --type xml --package com.oneleadq.app "$OUT")"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" resources xml --file "/${POLICY_PATH#/}" "$OUT" > artifacts/android-production-ci/evidence/apk-network-policy.txt
           python3 - <<'PY'
           from pathlib import Path
           import re
