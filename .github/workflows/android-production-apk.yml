@@ -53,7 +53,7 @@ jobs:
           [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
           # Owner-approved candidate; changes to this literal require review on main.
           # Branch ancestry alone is NOT source approval.
-          APPROVED_SHA='63a6f5601da278d96a3c2c8cc1d717fd3b08dded'
+          APPROVED_SHA='d7cb094a2de0cae51216678824ba5b1a65b37bac'
           test -n "$APPROVED_SHA" || { echo 'BLOCKED: no production source SHA approved'; exit 1; }
           test "$EXPECTED_SHA" = "$APPROVED_SHA"
           printf 'source_sha=%s\n' "$APPROVED_SHA" >> "$GITHUB_OUTPUT"
@@ -134,8 +134,8 @@ jobs:
           git merge-base --is-ancestor "$EXPECTED_SHA" refs/remotes/origin/batch3-windows-secure-worker
           node - <<'NODE'
           const a = require('./app.json').expo;
-          if (a.android?.package !== 'com.oneleadq.app' || a.android?.versionCode !== 2) {
-            throw Error('Expected com.oneleadq.app versionCode 2');
+          if (a.android?.package !== 'com.oneleadq.app' || a.android?.versionCode !== 3) {
+            throw Error('Expected com.oneleadq.app versionCode 3');
           }
           NODE
           test -f scripts/build-android-development.cjs
@@ -188,6 +188,41 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/build-android-development.cjs --prepare-only
+
+      - name: Verify generated V3 Android network policy
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const { XML } = require('expo/config-plugins');
+          (async () => {
+            const root = 'artifacts/batch3/android-development-build';
+            const android = root + '/android/app/src';
+            assert.equal(fs.readFileSync(root + '/plugins/withAiNetworkSecurity.cjs', 'utf8'), fs.readFileSync('plugins/withAiNetworkSecurity.cjs', 'utf8'));
+            const manifest = await XML.parseXMLAsync(fs.readFileSync(android + '/main/AndroidManifest.xml', 'utf8'));
+            const app = manifest.manifest.application[0].$;
+            assert.equal(app['android:networkSecurityConfig'], '@xml/oneleadq_ai_network_security');
+            assert.equal(app['android:usesCleartextTraffic'], 'false');
+            assert.ok(manifest.manifest['uses-permission'].some(p => p.$['android:name'] === 'android.permission.INTERNET'));
+            assert.equal(fs.existsSync(android + '/release/AndroidManifest.xml'), false);
+            const policy = await XML.parseXMLAsync(fs.readFileSync(android + '/main/res/xml/oneleadq_ai_network_security.xml', 'utf8'));
+            const network = policy['network-security-config'];
+            assert.deepEqual(Object.keys(network).sort(), ['base-config', 'domain-config']);
+            assert.equal(network['base-config'].length, 1);
+            assert.equal(network['base-config'][0].$.cleartextTrafficPermitted, 'false');
+            assert.equal(network['domain-config'].length, 1);
+            const domain = network['domain-config'][0];
+            assert.equal(domain.$.cleartextTrafficPermitted, 'true');
+            assert.equal(domain.domain.length, 1);
+            assert.equal(domain.domain[0]._, '192.168.1.2');
+            assert.equal(domain.domain[0].$.includeSubdomains, 'false');
+            const gradle = fs.readFileSync(root + '/android/app/build.gradle', 'utf8');
+            assert.match(gradle, /applicationId ['"]com\.oneleadq\.app['"]/);
+            assert.match(gradle, /versionCode 3\b/);
+            console.log('V3 generated Android package and targeted network policy verified.');
+          })().catch(() => { console.error('Generated V3 Android policy verification failed'); process.exitCode = 1; });
+          NODE
 
       - name: Remove generated debug signing from release variant
         working-directory: artifacts/batch3/android-development-build/android
@@ -260,7 +295,7 @@ jobs:
           TOOLS="$ANDROID_HOME/build-tools/36.0.0"
           test -f unsigned/app-release-unsigned.apk
           "$TOOLS/aapt" dump badging unsigned/app-release-unsigned.apk > unsigned-package.txt
-          grep -Eq "^package: name='com\.oneleadq\.app' versionCode='2'" unsigned-package.txt
+          grep -Eq "^package: name='com\.oneleadq\.app' versionCode='3'" unsigned-package.txt
           "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" dex packages --defined-only unsigned/app-release-unsigned.apk > unsigned-native.txt
           grep -q 'expo.modules.oneleadqtrust.OneLeadQTrustModule' unsigned-native.txt
 
@@ -289,7 +324,7 @@ jobs:
             -storepass:env ANDROID_KEYSTORE_PASSWORD -file "$SIGNING_DIR/certificate.der"
           test "$(sha256sum "$SIGNING_DIR/certificate.der" | cut -d' ' -f1)" = "$EXPECTED"
           ALIGNED="$SIGNING_DIR/aligned.apk"
-          OUT='artifacts/android-production-ci/apk/OneLeadQ-production-v2.apk'
+          OUT='artifacts/android-production-ci/apk/OneLeadQ-production-v3.apk'
           "$TOOLS/zipalign" -f -p 4 "$SRC" "$ALIGNED"
           "$TOOLS/apksigner" sign \
             --ks "$SIGNING_DIR/production.jks" \
@@ -303,7 +338,32 @@ jobs:
           ACTUAL="$(sed -nE 's/^Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]+).*$/\1/p' artifacts/android-production-ci/evidence/signing-certificate.txt | head -n1 | tr '[:upper:]' '[:lower:]')"
           test "$ACTUAL" = "$EXPECTED"
           "$TOOLS/aapt" dump badging "$OUT" > artifacts/android-production-ci/evidence/apk-package.txt
-          grep -Eq "^package: name='com\.oneleadq\.app' versionCode='2'" artifacts/android-production-ci/evidence/apk-package.txt
+          grep -Eq "^package: name='com\.oneleadq\.app' versionCode='3'" artifacts/android-production-ci/evidence/apk-package.txt
+          "$TOOLS/aapt" dump xmltree "$OUT" AndroidManifest.xml > artifacts/android-production-ci/evidence/apk-manifest-tree.txt
+          "$TOOLS/aapt" dump resources "$OUT" > signed-resources.txt
+          "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" resources xml --file /res/xml/oneleadq_ai_network_security.xml "$OUT" > artifacts/android-production-ci/evidence/apk-network-policy.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import xml.etree.ElementTree as ET
+          evidence = Path('artifacts/android-production-ci/evidence')
+          manifest = (evidence / 'apk-manifest-tree.txt').read_text()
+          resources = Path('signed-resources.txt').read_text()
+          resource_ids = set(re.findall(r'resource (0x[0-9a-fA-F]+) com\.oneleadq\.app:xml/oneleadq_ai_network_security\b', resources))
+          reference = re.search(r'android:networkSecurityConfig\([^)]*\)=@(0x[0-9a-fA-F]+)', manifest)
+          assert reference and resource_ids == {reference.group(1)}, 'Packaged network configuration reference mismatch'
+          assert re.search(r'android:usesCleartextTraffic\([^)]*\)=\(type 0x12\)0x0\b', manifest), 'Global cleartext must be disabled'
+          network = ET.parse(evidence / 'apk-network-policy.txt').getroot()
+          assert network.tag == 'network-security-config' and not network.attrib
+          assert [node.tag for node in network] == ['base-config', 'domain-config']
+          base, domain = network
+          assert base.attrib == {'cleartextTrafficPermitted': 'false'} and len(base) == 0
+          assert domain.attrib == {'cleartextTrafficPermitted': 'true'} and len(domain) == 1
+          host = domain[0]
+          assert host.tag == 'domain' and host.attrib == {'includeSubdomains': 'false'}
+          assert (host.text or '').strip() == '192.168.1.2' and len(host) == 0
+          print('Signed V3 APK targeted network security policy verified.')
+          PY
           "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" dex packages --defined-only "$OUT" > artifacts/android-production-ci/evidence/native-packaging.txt
           grep -q 'OneLeadQTrustModule' artifacts/android-production-ci/evidence/native-packaging.txt
           sha256sum "$OUT" > artifacts/android-production-ci/evidence/apk-sha256.txt
