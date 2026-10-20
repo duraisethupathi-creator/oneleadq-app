@@ -359,6 +359,8 @@ jobs:
           assert [node.tag for node in network] == ['base-config', 'domain-config']
           base, domain = network
           assert base.attrib == {'cleartextTrafficPermitted': 'false'} and len(base) == 0
+          print("Domain attributes:", domain.attrib, flush=True)
+          print("Domain children:", [(x.tag, x.attrib, x.text) for x in domain], flush=True)
           assert domain.attrib == {'cleartextTrafficPermitted': 'true'} and len(domain) == 1
           host = domain[0]
           assert host.tag == 'domain' and host.attrib == {'includeSubdomains': 'false'}
