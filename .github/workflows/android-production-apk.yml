@@ -342,11 +342,10 @@ jobs:
           "$TOOLS/aapt" dump xmltree "$OUT" AndroidManifest.xml > artifacts/android-production-ci/evidence/apk-manifest-tree.txt
           "$TOOLS/aapt" dump resources "$OUT" > signed-resources.txt
           POLICY_PATH="$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" resources value --config default --name oneleadq_ai_network_security --type xml --package com.oneleadq.app "$OUT")"
-          "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" resources xml --file "/${POLICY_PATH#/}" "$OUT" > artifacts/android-production-ci/evidence/apk-network-policy.txt
+          "$TOOLS/aapt2" dump xmltree --file "${POLICY_PATH#/}" "$OUT" > artifacts/android-production-ci/evidence/apk-network-policy.txt
           python3 - <<'PY'
           from pathlib import Path
           import re
-          import xml.etree.ElementTree as ET
           evidence = Path('artifacts/android-production-ci/evidence')
           manifest = (evidence / 'apk-manifest-tree.txt').read_text()
           resources = Path('signed-resources.txt').read_text()
@@ -354,17 +353,26 @@ jobs:
           reference = re.search(r'android:networkSecurityConfig\([^)]*\)=@(0x[0-9a-fA-F]+)', manifest)
           assert reference and resource_ids == {reference.group(1)}, 'Packaged network configuration reference mismatch'
           assert re.search(r'android:usesCleartextTraffic\([^)]*\)=\(type 0x12\)0x0\b', manifest), 'Global cleartext must be disabled'
-          network = ET.parse(evidence / 'apk-network-policy.txt').getroot()
-          assert network.tag == 'network-security-config' and not network.attrib
-          assert [node.tag for node in network] == ['base-config', 'domain-config']
-          base, domain = network
-          assert base.attrib == {'cleartextTrafficPermitted': 'false'} and len(base) == 0
-          print("Domain attributes:", domain.attrib, flush=True)
-print("Domain children:", [(x.tag, x.attrib, x.text) for x in domain], flush=True)
-assert domain.attrib == {'cleartextTrafficPermitted': 'true'} and len(domain) == 1
-          host = domain[0]
-          assert host.tag == 'domain' and host.attrib == {'includeSubdomains': 'false'}
-          assert (host.text or '').strip() == '192.168.1.2' and len(host) == 0
+          tree = (evidence / 'apk-network-policy.txt').read_text()
+
+          expected = [
+              r'E: network-security-config \(line=\d+\)',
+              r'    E: base-config \(line=\d+\)',
+              r'      A: cleartextTrafficPermitted=false',
+              r'    E: domain-config \(line=\d+\)',
+              r'      A: cleartextTrafficPermitted=true',
+              r'        E: domain \(line=\d+\)',
+              r'          A: includeSubdomains=false',
+              r"            T: '192\.168\.1\.2'",
+          ]
+
+          actual = [line.rstrip() for line in tree.splitlines() if line.strip()]
+
+          assert len(actual) == len(expected), 'Unexpected network policy entries'
+
+          for index, (line, pattern) in enumerate(zip(actual, expected), 1):
+              assert re.fullmatch(pattern, line), f'Network policy mismatch at line {index}: {line}'
+
           print('Signed V3 APK targeted network security policy verified.')
           PY
           "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" dex packages --defined-only "$OUT" > artifacts/android-production-ci/evidence/native-packaging.txt
