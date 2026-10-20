@@ -7,8 +7,15 @@ import AssistantHost from '../src/components/AssistantHost';
 import { getWebDevelopmentSessionToken } from '../src/services/webDevelopmentSession';
 import type { FloatingAssistantHandle } from '../src/components/FloatingAssistant';
 import { trustedWindows } from '../src/services/trustedWindows';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ASSISTANT_DOCK_HEIGHT } from '../src/components/RoamingAssistant';
 
 export default function RootLayout() {
+  return <SafeAreaProvider><RootShell /></SafeAreaProvider>;
+}
+
+function RootShell() {
+  const insets = useSafeAreaInsets();
   const assistant = useRef<FloatingAssistantHandle>(null);
   useEffect(() => {
     trustedWindows.setForeground(AppState.currentState === 'active');
@@ -20,11 +27,12 @@ export default function RootLayout() {
     <View style={{ flex: 1, backgroundColor: colors.cream }} onTouchStart={() => assistant.current?.handleScreenTouch()}>
       <StatusBar style="light" />
       {/* Reserve space for the assistant instead of placing its touch target over page actions. */}
-      <View style={{ flex: 1, marginBottom: 72 }}>
+      <View style={{ flex: 1, marginBottom: ASSISTANT_DOCK_HEIGHT + insets.bottom }}>
         <Stack screenOptions={{ headerShown: false }} />
       </View>
       <AssistantHost
           compactDock
+          dockBottomInset={insets.bottom}
           ref={assistant}
           getWebDevelopmentSessionToken={getWebDevelopmentSessionToken}
       />

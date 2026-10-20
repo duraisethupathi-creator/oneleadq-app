@@ -1,6 +1,7 @@
 import { localDateKey } from "../../src/utils/localDate";
 import React, { useCallback, useState } from "react";
 import { useFocusEffect } from "expo-router";
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   loadClients,
@@ -389,6 +390,7 @@ approval: smartDetails.approval,
   ];
 
   return (
+    <SafeAreaView style={s.safeArea} edges={['top']}>
     <KeyboardAvoidingView
       style={s.page}
       behavior={
@@ -605,10 +607,12 @@ approval: smartDetails.approval,
         </View>
       </Modal>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.green },
     clientContext: {
   marginHorizontal: 20,
   marginTop: 18,

@@ -2,15 +2,17 @@
 import { Animated, Keyboard, PanResponder, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { colors } from '../theme';
 
+export const ASSISTANT_DOCK_HEIGHT = 194; // 122 character + 12 gap + 48 controls + 12 bottom.
 export function clampCharacter(x: number, y: number, width: number, height: number) {
-  return { x: Math.max(0, Math.min(x, Math.max(0, width - 100))), y: Math.max(56, Math.min(y, Math.max(56, height - 210))) };
+  return { x: Math.max(0, Math.min(x, Math.max(0, width - 100))), y: Math.max(0, Math.min(y, Math.max(0, height - ASSISTANT_DOCK_HEIGHT))) };
 }
 
 /** Normal roaming is touch-transparent. Reposition mode captures only the character until release. */
-export default function RoamingAssistant({ active, awake, paused = false, onOpen, onWake, children }: {
-  active: boolean; awake: boolean; paused?: boolean; onOpen: () => void; onWake?: () => void; children: (running: boolean, walking: boolean, left: boolean) => ReactNode;
+export default function RoamingAssistant({ active, awake, paused = false, bottomInset = 0, onOpen, onWake, children }: {
+  active: boolean; awake: boolean; paused?: boolean; bottomInset?: number; onOpen: () => void; onWake?: () => void; children: (running: boolean, walking: boolean, left: boolean) => ReactNode;
 }) {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
+  const height = ASSISTANT_DOCK_HEIGHT;
   const [keyboard, setKeyboard] = useState(false);
   const [reposition, setReposition] = useState(false);
   const [anchored, setAnchored] = useState(false);
@@ -63,10 +65,10 @@ export default function RoamingAssistant({ active, awake, paused = false, onOpen
     onPanResponderTerminate: () => { setAnchored(true); setReposition(false); },
   })).current;
 
-  return <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+  return <View pointerEvents="box-none" style={[s.dock, { bottom: bottomInset }]}>
     {active && !keyboard && <Animated.View {...responder.panHandlers} pointerEvents={reposition ? 'auto' : 'none'}
       accessible accessibilityRole="image" accessibilityLabel="OneLeadQ roaming character"
-      accessibilityHint="Choose Move assistant below to drag the character. Normal movement allows taps through."
+      accessibilityHint="Choose Move assistant below to drag within the assistant dock."
       style={[s.character, { transform: point.getTranslateTransform() }]}>
       {children(running && !anchored && !reposition && awake, !paused && !anchored && !reposition && awake, left)}
     </Animated.View>}
@@ -80,9 +82,10 @@ export default function RoamingAssistant({ active, awake, paused = false, onOpen
   </View>;
 }
 const s = StyleSheet.create({
+  dock: { position: 'absolute', left: 0, right: 0, height: ASSISTANT_DOCK_HEIGHT, overflow: 'hidden', backgroundColor: colors.cream },
   character: { position: 'absolute', top: 0, left: 0, width: 100, height: 122 },
   controls: { position: 'absolute', bottom: 12, left: 12, right: 12, flexDirection: 'row', justifyContent: 'center', gap: 8 },
-  button: { minHeight: 48, paddingHorizontal: 10, justifyContent: 'center', borderRadius: 14, backgroundColor: colors.green },
-  label: { color: colors.gold, fontWeight: '800', fontSize: 12 },
+  button: { flex: 1, minWidth: 0, minHeight: 48, paddingHorizontal: 6, justifyContent: 'center', borderRadius: 14, backgroundColor: colors.green },
+  label: { color: colors.gold, fontWeight: '800', fontSize: 12, textAlign: 'center' },
   hint: { position: 'absolute', bottom: 64, left: 16, right: 16, padding: 8, backgroundColor: colors.cream, color: colors.green, textAlign: 'center' },
 });

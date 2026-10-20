@@ -40,8 +40,8 @@ const AssistantMascot = memo(function AssistantMascot({ reaction, facingLeft = f
 });
 
 export type FloatingAssistantHandle = { handleScreenTouch: () => void };
-export type FloatingAssistantProps = { getWebDevelopmentSessionToken?: WebSessionTokenProvider; compactDock?: boolean; wakeSignal?: string; motionPaused?: boolean };
-const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantProps>(function FloatingAssistant({ getWebDevelopmentSessionToken, compactDock = false, wakeSignal, motionPaused = false }, ref) {
+export type FloatingAssistantProps = { getWebDevelopmentSessionToken?: WebSessionTokenProvider; compactDock?: boolean; dockBottomInset?: number; wakeSignal?: string; motionPaused?: boolean };
+const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantProps>(function FloatingAssistant({ getWebDevelopmentSessionToken, compactDock = false, dockBottomInset = 0, wakeSignal, motionPaused = false }, ref) {
   const [open, setOpen] = useState(false);
   const [webWorkspaceOpen,setWebWorkspaceOpen]=useState(false);
   const [webHandoff,setWebHandoff]=useState<{clientId:string;mode:'CREATE_NEW'|'UPGRADE_EXISTING';intent:string;nonce:number;websiteType?:string}>();
@@ -561,7 +561,7 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>}
-    {compactDock ? <RoamingAssistant active={!open && active} awake={!sleeping} onOpen={toggleAssistant} onWake={wake} paused={motionPaused}>
+    {compactDock ? <RoamingAssistant active={!open && active} awake={!sleeping} bottomInset={dockBottomInset} onOpen={toggleAssistant} onWake={wake} paused={motionPaused}>
       {(running, walking, left) => <AssistantMascot reaction={reaction === 'walking' ? (walking ? (running ? 'running' : 'walking') : 'idle') : reaction} active={active && !sleeping} facingLeft={left} />}
     </RoamingAssistant> : <Animated.View pointerEvents="box-none" style={[s.walker, compactDock && { bottom: 8 }, { transform: [{ translateX: open ? 0 : walkX }] }]}>
       <Pressable accessibilityRole="button" accessibilityLabel={open ? 'Close OneLeadQ assistant' : 'Open OneLeadQ assistant'} onPress={toggleAssistant} style={[s.bot, compactDock && { width: 56, height: 56 }]}>

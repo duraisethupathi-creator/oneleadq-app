@@ -3,8 +3,16 @@ name: Android production-signed APK (manual, artifact only)
 on:
   workflow_dispatch:
     inputs:
+      operation:
+        description: Certificate inspection only by default; APK build requires separate approval
+        required: true
+        default: verify_certificate
+        type: choice
+        options:
+          - verify_certificate
+          - build_apk
       expected_sha:
-        description: Exact reviewed 40-character commit SHA on the selected ref
+        description: Exact SHA explicitly allowlisted in this main-branch workflow
         required: true
         type: string
       accept_sdk_licenses:
@@ -17,12 +25,87 @@ permissions:
   contents: read
 
 concurrency:
-  group: android-production-apk-${{ github.ref }}
+  group: android-production-apk
   cancel-in-progress: false
 
 jobs:
+  authorize:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'duraisethupathi-creator/oneleadq-app'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      source_sha: ${{ steps.approval.outputs.source_sha }}
+    steps:
+      - name: Check explicit source approval before executing source code
+        id: approval
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          ACCEPT_LICENSES: ${{ inputs.accept_sdk_licenses }}
+          OPERATION: ${{ inputs.operation }}
+        run: |
+          set -euo pipefail
+          case "$OPERATION" in
+            verify_certificate) ;;
+            build_apk) test "$ACCEPT_LICENSES" = true ;;
+            *) exit 1 ;;
+          esac
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          # Owner-approved candidate; changes to this literal require review on main.
+          # Branch ancestry alone is NOT source approval.
+          APPROVED_SHA='' # Set only after explicit approval of the exact V4 candidate commit
+          test -n "$APPROVED_SHA" || { echo 'BLOCKED: no production source SHA approved'; exit 1; }
+          test "$EXPECTED_SHA" = "$APPROVED_SHA"
+          printf 'source_sha=%s\n' "$APPROVED_SHA" >> "$GITHUB_OUTPUT"
+
+  verify_certificate:
+    needs: authorize
+    if: inputs.operation == 'verify_certificate'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: android-production
+    steps:
+      # Separate approval required: this job accesses existing production secrets.
+      # No checkout, SDK, build, signing, certificate upload or artifact upload.
+      - name: Verify existing credential certificate; emit public fingerprint only
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, hashlib, os, pathlib, ssl, subprocess, tempfile
+          expected = 'cc50b5df32eb6387001486e196505caab85e155f0a5c8b2eeb2e5da3e2b14c0d'
+          try:
+              # Decode only inside the ephemeral runner; never export a keystore/artifact.
+              with tempfile.TemporaryDirectory(prefix='oneleadq-cert-', dir=os.environ['RUNNER_TEMP']) as work:
+                  key = pathlib.Path(work) / 'existing.jks'
+                  with key.open('xb') as handle:
+                      os.chmod(key, 0o600)
+                      handle.write(base64.b64decode(os.environ['ANDROID_KEYSTORE_BASE64'], validate=True))
+                  keytool = pathlib.Path(os.environ['JAVA_HOME_17_X64']) / 'bin/keytool'
+                  result = subprocess.run([
+                      str(keytool), '-exportcert', '-rfc', '-keystore', str(key),
+                      '-alias', os.environ['ANDROID_KEY_ALIAS'],
+                      '-storepass:env', 'ANDROID_KEYSTORE_PASSWORD',
+                  ], capture_output=True, text=True, timeout=30)
+                  if result.returncode != 0:
+                      raise ValueError('inspection failed')
+                  der = ssl.PEM_cert_to_DER_cert(result.stdout)
+                  fingerprint = hashlib.sha256(der).hexdigest()
+                  print(fingerprint, flush=True)
+                  if fingerprint != expected:
+                      raise ValueError('certificate mismatch')
+          except Exception:
+              # No subprocess output, exception details, secret values or certificate bodies.
+              raise SystemExit(1)
+          PY
+
   apk:
-    if: github.event_name == 'workflow_dispatch' && inputs.accept_sdk_licenses == true
+    needs: authorize
+    if: inputs.operation == 'build_apk'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     defaults:
@@ -30,33 +113,36 @@ jobs:
         shell: bash
     env:
       CI: '1'
-      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      EXPECTED_SHA: ${{ needs.authorize.outputs.source_sha }}
       CMAKE_VERSION: '3.30.5'
       CMAKE_BUILD_PARALLEL_LEVEL: '1'
       GRADLE_USER_HOME: /tmp/oneleadq-gradle
-      SIGNING_DIR: /tmp/oneleadq-signing
 
     steps:
       - name: Checkout exact reviewed source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          ref: ${{ needs.authorize.outputs.source_sha }}
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Verify source SHA and app configuration
         run: |
           set -euo pipefail
           [[ "$EXPECTED_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "${EXPECTED_SHA,,}" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          git merge-base --is-ancestor d7cb094a2de0cae51216678824ba5b1a65b37bac "$EXPECTED_SHA"
           node - <<'NODE'
           const a = require('./app.json').expo;
-          if (a.android?.package !== 'com.oneleadq.app' || a.android?.versionCode !== 2) {
-            throw Error('Expected com.oneleadq.app versionCode 2');
+          if (a.android?.package !== 'com.oneleadq.app' || a.android?.versionCode !== 4) {
+            throw Error('Expected com.oneleadq.app versionCode 4');
           }
           NODE
           test -f scripts/build-android-development.cjs
+          # Required test dependencies must exist in the immutable source commit.
+          git cat-file -e HEAD:windows/device-trust.cjs
           mkdir -p artifacts/android-production-ci/apk artifacts/android-production-ci/evidence
-          printf '%s\n' "$GITHUB_SHA" > artifacts/android-production-ci/evidence/source-sha.txt
+          printf '%s\n' "$EXPECTED_SHA" > artifacts/android-production-ci/evidence/source-sha.txt
 
       - name: Node 24
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -89,7 +175,9 @@ jobs:
           set -euo pipefail
           npm ci --ignore-scripts --no-audit --no-fund
           node node_modules/typescript/bin/tsc --noEmit
-          node --test scripts/test-trusted-devices.cjs scripts/test-trusted-mobile.cjs scripts/test-windows-mobile.cjs
+          node scripts/verify-v4-source.cjs
+          node --test scripts/test-v3-controlled.cjs
+          node --test scripts/test-trusted-devices.cjs scripts/test-trusted-mobile.cjs scripts/test-windows-mobile.cjs scripts/test-windows-cancellation.cjs
           node node_modules/expo-modules-autolinking/bin/expo-modules-autolinking.js resolve --platform android --json > artifacts/android-production-ci/evidence/autolinking.json
           node - <<'NODE'
           const a = require('./artifacts/android-production-ci/evidence/autolinking.json');
@@ -102,6 +190,41 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/build-android-development.cjs --prepare-only
+
+      - name: Verify generated V4 Android network policy
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const { XML } = require('expo/config-plugins');
+          (async () => {
+            const root = 'artifacts/batch3/android-development-build';
+            const android = root + '/android/app/src';
+            assert.equal(fs.readFileSync(root + '/plugins/withAiNetworkSecurity.cjs', 'utf8'), fs.readFileSync('plugins/withAiNetworkSecurity.cjs', 'utf8'));
+            const manifest = await XML.parseXMLAsync(fs.readFileSync(android + '/main/AndroidManifest.xml', 'utf8'));
+            const app = manifest.manifest.application[0].$;
+            assert.equal(app['android:networkSecurityConfig'], '@xml/oneleadq_ai_network_security');
+            assert.equal(app['android:usesCleartextTraffic'], 'false');
+            assert.ok(manifest.manifest['uses-permission'].some(p => p.$['android:name'] === 'android.permission.INTERNET'));
+            assert.equal(fs.existsSync(android + '/release/AndroidManifest.xml'), false);
+            const policy = await XML.parseXMLAsync(fs.readFileSync(android + '/main/res/xml/oneleadq_ai_network_security.xml', 'utf8'));
+            const network = policy['network-security-config'];
+            assert.deepEqual(Object.keys(network).sort(), ['base-config', 'domain-config']);
+            assert.equal(network['base-config'].length, 1);
+            assert.equal(network['base-config'][0].$.cleartextTrafficPermitted, 'false');
+            assert.equal(network['domain-config'].length, 1);
+            const domain = network['domain-config'][0];
+            assert.equal(domain.$.cleartextTrafficPermitted, 'true');
+            assert.equal(domain.domain.length, 1);
+            assert.equal(domain.domain[0]._, '192.168.1.2');
+            assert.equal(domain.domain[0].$.includeSubdomains, 'false');
+            const gradle = fs.readFileSync(root + '/android/app/build.gradle', 'utf8');
+            assert.match(gradle, /applicationId ['"]com\.oneleadq\.app['"]/);
+            assert.match(gradle, /versionCode 4\b/);
+            console.log('V4 generated Android package and targeted network policy verified.');
+          })().catch(() => { console.error('Generated V4 Android policy verification failed'); process.exitCode = 1; });
+          NODE
 
       - name: Remove generated debug signing from release variant
         working-directory: artifacts/batch3/android-development-build/android
@@ -122,7 +245,7 @@ jobs:
           updated = release.replace('            ' + marker + '\n', '', 1)
           if updated == release or marker in updated:
               raise SystemExit('Could not safely remove release signing')
-          p.write_text(source[:start] + updated + source[end:])
+          p.write_text(source[:start] + updated + source[end:] + '\nandroid { externalNativeBuild { cmake { version "3.30.5" } } }\n')
           print('Generated release signing disabled; debug configuration preserved')
           PYCODE
 
@@ -134,6 +257,50 @@ jobs:
           ./gradlew :app:assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
           test -f app/build/outputs/apk/release/app-release-unsigned.apk
 
+      - name: Upload unsigned build for isolated signing
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: unsigned-production-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/batch3/android-development-build/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 1
+          if-no-files-found: error
+
+  sign:
+    needs: [authorize, apk]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # Configure required reviewers, main-only access, and environment-only signing secrets.
+    environment: android-production
+    defaults:
+      run:
+        shell: bash
+    env:
+      SIGNING_DIR: ${{ github.workspace }}/.oneleadq-signing
+      EXPECTED_SHA: ${{ needs.authorize.outputs.source_sha }}
+    steps:
+      # Never checkout or execute application code on the signing runner.
+      - name: Download unsigned APK from this run only
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: unsigned-production-${{ github.run_id }}-${{ github.run_attempt }}
+          path: unsigned
+
+      - name: Prepare signing tools before exposing signing secrets
+        run: |
+          set -euo pipefail
+          export JAVA_HOME="${JAVA_HOME_17_X64:?Hosted JDK17 missing}"
+          export PATH="$JAVA_HOME/bin:$PATH"
+          printf 'JAVA_HOME=%s\n' "$JAVA_HOME" >> "$GITHUB_ENV"
+          printf '%s/bin\n' "$JAVA_HOME" >> "$GITHUB_PATH"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'build-tools;36.0.0'
+          TOOLS="$ANDROID_HOME/build-tools/36.0.0"
+          test -f unsigned/app-release-unsigned.apk
+          "$TOOLS/aapt" dump badging unsigned/app-release-unsigned.apk > unsigned-package.txt
+          grep -Eq "^package: name='com\.oneleadq\.app' versionCode='4'" unsigned-package.txt
+          "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" dex packages --defined-only unsigned/app-release-unsigned.apk > unsigned-native.txt
+          grep -q 'expo.modules.oneleadqtrust.OneLeadQTrustModule' unsigned-native.txt
+
       - name: Sign release APK with existing production key and verify
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -143,16 +310,23 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
+          trap 'rm -rf -- "$SIGNING_DIR"' EXIT
           test -n "$ANDROID_KEYSTORE_BASE64"
           test -n "$ANDROID_KEYSTORE_PASSWORD"
           test -n "$ANDROID_KEY_ALIAS"
           test -n "$ANDROID_KEY_PASSWORD"
-          mkdir -p "$SIGNING_DIR"
+          mkdir -p "$SIGNING_DIR" artifacts/android-production-ci/apk artifacts/android-production-ci/evidence
+          printf '%s\n' "$EXPECTED_SHA" > artifacts/android-production-ci/evidence/source-sha.txt
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$SIGNING_DIR/production.jks"
           TOOLS="$ANDROID_HOME/build-tools/36.0.0"
-          SRC='artifacts/batch3/android-development-build/android/app/build/outputs/apk/release/app-release-unsigned.apk'
+          SRC='unsigned/app-release-unsigned.apk'
+          EXPECTED='cc50b5df32eb6387001486e196505caab85e155f0a5c8b2eeb2e5da3e2b14c0d'
+          # Verify the existing key BEFORE using it; output only the public certificate digest.
+          keytool -exportcert -keystore "$SIGNING_DIR/production.jks" -alias "$ANDROID_KEY_ALIAS" \
+            -storepass:env ANDROID_KEYSTORE_PASSWORD -file "$SIGNING_DIR/certificate.der"
+          test "$(sha256sum "$SIGNING_DIR/certificate.der" | cut -d' ' -f1)" = "$EXPECTED"
           ALIGNED="$SIGNING_DIR/aligned.apk"
-          OUT='artifacts/android-production-ci/apk/OneLeadQ-production-v2.apk'
+          OUT='artifacts/android-production-ci/apk/OneLeadQ-production-v4.apk'
           "$TOOLS/zipalign" -f -p 4 "$SRC" "$ALIGNED"
           "$TOOLS/apksigner" sign \
             --ks "$SIGNING_DIR/production.jks" \
@@ -162,10 +336,47 @@ jobs:
             --out "$OUT" "$ALIGNED"
           "$TOOLS/apksigner" verify --verbose --print-certs "$OUT" > artifacts/android-production-ci/evidence/signing-certificate.txt
           EXPECTED='cc50b5df32eb6387001486e196505caab85e155f0a5c8b2eeb2e5da3e2b14c0d'
+          test "$(grep -cE '^Signer #[0-9]+ certificate SHA-256 digest:' artifacts/android-production-ci/evidence/signing-certificate.txt)" -eq 1
           ACTUAL="$(sed -nE 's/^Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]+).*$/\1/p' artifacts/android-production-ci/evidence/signing-certificate.txt | head -n1 | tr '[:upper:]' '[:lower:]')"
           test "$ACTUAL" = "$EXPECTED"
           "$TOOLS/aapt" dump badging "$OUT" > artifacts/android-production-ci/evidence/apk-package.txt
-          grep -Eq "^package: name='com\.oneleadq\.app' versionCode='2'" artifacts/android-production-ci/evidence/apk-package.txt
+          grep -Eq "^package: name='com\.oneleadq\.app' versionCode='4'" artifacts/android-production-ci/evidence/apk-package.txt
+          "$TOOLS/aapt" dump xmltree "$OUT" AndroidManifest.xml > artifacts/android-production-ci/evidence/apk-manifest-tree.txt
+          "$TOOLS/aapt" dump resources "$OUT" > signed-resources.txt
+          POLICY_PATH="$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" resources value --config default --name oneleadq_ai_network_security --type xml --package com.oneleadq.app "$OUT")"
+          "$TOOLS/aapt2" dump xmltree --file "${POLICY_PATH#/}" "$OUT" > artifacts/android-production-ci/evidence/apk-network-policy.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          evidence = Path('artifacts/android-production-ci/evidence')
+          manifest = (evidence / 'apk-manifest-tree.txt').read_text()
+          resources = Path('signed-resources.txt').read_text()
+          resource_ids = set(re.findall(r'resource (0x[0-9a-fA-F]+) com\.oneleadq\.app:xml/oneleadq_ai_network_security\b', resources))
+          reference = re.search(r'android:networkSecurityConfig\([^)]*\)=@(0x[0-9a-fA-F]+)', manifest)
+          assert reference and resource_ids == {reference.group(1)}, 'Packaged network configuration reference mismatch'
+          assert re.search(r'android:usesCleartextTraffic\([^)]*\)=\(type 0x12\)0x0\b', manifest), 'Global cleartext must be disabled'
+          tree = (evidence / 'apk-network-policy.txt').read_text()
+
+          expected = [
+              r'E: network-security-config \(line=\d+\)',
+              r'    E: base-config \(line=\d+\)',
+              r'      A: cleartextTrafficPermitted=false',
+              r'    E: domain-config \(line=\d+\)',
+              r'      A: cleartextTrafficPermitted=true',
+              r'        E: domain \(line=\d+\)',
+              r'          A: includeSubdomains=false',
+              r"            T: '192\.168\.1\.2'",
+          ]
+
+          actual = [line.rstrip() for line in tree.splitlines() if line.strip()]
+
+          assert len(actual) == len(expected), 'Unexpected network policy entries'
+
+          for index, (line, pattern) in enumerate(zip(actual, expected), 1):
+              assert re.fullmatch(pattern, line), f'Network policy mismatch at line {index}: {line}'
+
+          print('Signed V4 APK targeted network security policy verified.')
+          PY
           "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" dex packages --defined-only "$OUT" > artifacts/android-production-ci/evidence/native-packaging.txt
           grep -q 'OneLeadQTrustModule' artifacts/android-production-ci/evidence/native-packaging.txt
           sha256sum "$OUT" > artifacts/android-production-ci/evidence/apk-sha256.txt
@@ -182,7 +393,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: oneleadq-production-signed-${{ github.sha }}-${{ github.run_attempt }}
+          name: oneleadq-production-signed-${{ needs.authorize.outputs.source_sha }}-${{ github.run_attempt }}
           path: |
             artifacts/android-production-ci/apk/*.apk
             artifacts/android-production-ci/evidence/*.txt

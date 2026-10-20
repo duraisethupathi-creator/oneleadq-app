@@ -27,7 +27,9 @@ console.log('PASS: client-bound bounded follow-up memory, reset, credential scre
 async function storedClientGrounding() {
   const store=new Map();
   const defaults=load('src/data/defaultClients.ts').defaultClients;
-  const storage=load('src/storage/clientStorage.ts',name=>name==='@react-native-async-storage/async-storage'?{__esModule:true,default:{getItem:async key=>store.get(key)||null,setItem:async(key,value)=>store.set(key,value),removeItem:async key=>store.delete(key)}}:name.endsWith('/defaultClients')?{defaultClients:defaults}:require(name));
+  const mockStorage={__esModule:true,default:{getItem:async key=>store.get(key)||null,setItem:async(key,value)=>store.set(key,value),removeItem:async key=>store.delete(key)}};
+  const preserved=load('src/storage/preservedCollection.ts',name=>name==='@react-native-async-storage/async-storage'?mockStorage:require(name));
+  const storage=load('src/storage/clientStorage.ts',name=>name==='@react-native-async-storage/async-storage'?mockStorage:name==='./preservedCollection'?preserved:name.endsWith('/defaultClients')?{defaultClients:defaults}:require(name));
   const {validateConversation}=require(require('node:path').join(require('./stage16-backend-root.cjs'),'agents/conversation'));
   const {groundedReply}=require(require('node:path').join(require('./stage16-backend-root.cjs'),'agents/grounding'));
   const {webDevelopmentIntent}=require(require('node:path').join(require('./stage16-backend-root.cjs'),'agents/webDevelopmentIntent'));

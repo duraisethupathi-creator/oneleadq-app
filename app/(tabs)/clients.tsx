@@ -4,7 +4,6 @@ import {
   Alert, FlatList, Modal, KeyboardAvoidingView, Platform, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { defaultClients } from '../../src/data/defaultClients';
 import {
   loadClients,
   saveClients,
@@ -27,17 +26,24 @@ export default function Clients() {
   useEffect(()=>{const subscription=Keyboard.addListener('keyboardDidShow',()=>{if(notesFocused.current)editorScroll.current?.scrollToEnd({animated:true});});return()=>subscription.remove();},[]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [showArchived, setShowArchived] = useState(false);
   const [editor, setEditor] = useState<Client | null>(null);
   const [selected, setSelected] = useState<Client | null>(null);
   const [currentClientId, setCurrentClientId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadClients().then(setClients).catch(() => {
-      setClients(defaultClients);
+    let active = true;
+    setLoading(true);
+    loadClients().then(data => { if (active) { setClients(data); setLoadError(false); } }).catch(() => {
+      if (!active) return;
+      setClients([]);
+      setLoadError(true);
       Alert.alert('Storage error','Client data could not be loaded.');
-    }).finally(() => setLoading(false));
-  }, []);
+    }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [loadAttempt]);
   useEffect(() => {
   loadCurrentClientId()
     .then(setCurrentClientId)
@@ -95,8 +101,9 @@ export default function Clients() {
   return <SafeAreaView style={s.page} edges={['top']}>
     <View style={s.header}>
       <View><Text style={s.head}>Clients</Text><Text style={s.sub}>OneLeadQ client workspaces</Text></View>
-      <Pressable style={s.add} onPress={openNew}><Ionicons name="add" size={24} color={colors.white}/><Text style={s.addText}>Add</Text></Pressable>
+      <Pressable style={s.add} disabled={loadError} onPress={openNew}><Ionicons name="add" size={24} color={colors.white}/><Text style={s.addText}>Add</Text></Pressable>
     </View>
+    {loadError && <View><Text accessibilityRole="alert">Client data could not be loaded. Saved data has not been replaced.</Text><Pressable accessibilityRole="button" onPress={() => setLoadAttempt(value => value + 1)}><Text>Retry loading clients</Text></Pressable></View>}
     <View style={s.switchRow}>
       <Pressable style={[s.filter,!showArchived&&s.filterOn]} onPress={()=>setShowArchived(false)}><Text style={[s.filterText,!showArchived&&s.filterTextOn]}>Active ({clients.filter(x=>x.status==='active').length})</Text></Pressable>
       <Pressable style={[s.filter,showArchived&&s.filterOn]} onPress={()=>setShowArchived(true)}><Text style={[s.filterText,showArchived&&s.filterTextOn]}>Archived ({clients.filter(x=>x.status==='archived').length})</Text></Pressable>

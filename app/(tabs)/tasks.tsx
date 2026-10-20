@@ -1,4 +1,4 @@
-import { localDateKey } from "../../src/utils/localDate";
+import { isValidLocalDate, localDateKey } from "../../src/utils/localDate";
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -18,7 +18,7 @@ const blank=():AgencyTask=>({id:'',title:'',clientId:'',clientName:'',dueDate:lo
 export default function Tasks(){
  const { view } = useLocalSearchParams<{view?:string}>();
  const [tasks,setTasks]=useState<AgencyTask[]>([]); const [clients,setClients]=useState<Client[]>([]);
- const [filter,setFilter]=useState<Filter>('today'); const [editor,setEditor]=useState<AgencyTask|null>(null); const [selected,setSelected]=useState<AgencyTask|null>(null); const [loading,setLoading]=useState(true);
+ const [filter,setFilter]=useState<Filter>('today'); const [editor,setEditor]=useState<AgencyTask|null>(null); const [selected,setSelected]=useState<AgencyTask|null>(null); const [loading,setLoading]=useState(true);const [loadError,setLoadError]=useState(false);
 useFocusEffect(
   useCallback(() => {
     let active = true;
@@ -33,12 +33,13 @@ useFocusEffect(
 
         if (!active) return;
 
-        setTasks(t);
+        setTasks(t);setLoadError(false);
         setClients(
           c.filter(x => x.status === 'active')
         );
       } catch {
         if (active) {
+          setLoadError(true);
           Alert.alert(
             'Load error',
             'Tasks could not be loaded.'
@@ -60,14 +61,15 @@ useFocusEffect(
 ); const today=localDateKey();
  const visible=useMemo(()=>tasks.filter(t=>filter==='today'?t.dueDate===today&&t.status!=='completed':filter==='upcoming'?t.dueDate>today&&t.status!=='completed':filter==='pending'?['pending','in_progress'].includes(t.status):filter==='approval'?t.approval==='waiting':t.status==='completed'),[tasks,filter,today]);
  async function commit(next:AgencyTask[]){setTasks(next);try{await saveTasks(next);}catch{Alert.alert('Save failed','Task change could not be saved.');}}
- function save(){if(!editor?.title.trim())return Alert.alert('Task title required');if(!editor.clientId)return Alert.alert('Client required','Select a client.');if(!/^\d{4}-\d{2}-\d{2}$/.test(editor.dueDate))return Alert.alert('Invalid date','Use YYYY-MM-DD.');
+ function save(){if(!editor?.title.trim())return Alert.alert('Task title required');if(!editor.clientId)return Alert.alert('Client required','Select a client.');if(!isValidLocalDate(editor.dueDate))return Alert.alert('Invalid date','Enter a valid calendar date (YYYY-MM-DD).');
   const now=new Date().toISOString();const saved={...editor,title:editor.title.trim(),id:editor.id||`task-${Date.now()}`,createdAt:editor.createdAt||now,updatedAt:now};commit(editor.id?tasks.map(x=>x.id===saved.id?saved:x):[saved,...tasks]);setEditor(null);
  }
  function patch(t:AgencyTask,p:Partial<AgencyTask>){const updated={...t,...p,updatedAt:new Date().toISOString()};commit(tasks.map(x=>x.id===t.id?updated:x));setSelected(updated);}
  function remove(t:AgencyTask){Alert.alert('Delete task?',t.title,[{text:'Cancel',style:'cancel'},{text:'Delete',style:'destructive',onPress:()=>{commit(tasks.filter(x=>x.id!==t.id));setSelected(null);}}]);}
  if(loading)return <SafeAreaView style={s.page}><View style={s.center}><Text style={s.muted}>Loading tasks…</Text></View></SafeAreaView>;
  return <SafeAreaView style={s.page} edges={['top']}>
-  <View style={s.header}><View><Text style={s.head}>Tasks</Text><Text style={s.sub}>Work + approval center</Text></View><Pressable style={s.add} onPress={()=>setEditor(blank())}><Ionicons name="add" size={22} color="white"/><Text style={s.addText}>Task</Text></Pressable></View>
+  <View style={s.header}><View><Text style={s.head}>Tasks</Text><Text style={s.sub}>Work + approval center</Text></View><Pressable style={s.add} disabled={loadError} onPress={()=>setEditor(blank())}><Ionicons name="add" size={22} color="white"/><Text style={s.addText}>Task</Text></Pressable></View>
+  {loadError&&<Text accessibilityRole="alert">Task data could not be loaded. Saved data has not been replaced. Reopen this screen to retry.</Text>}
   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filters}>{filters.map(x=><Pressable key={x} style={[s.filter,filter===x&&s.filterOn]} onPress={()=>setFilter(x)}><Text style={[s.filterText,filter===x&&s.filterTextOn]}>{labels[x]}{x==='approval'?` (${tasks.filter(t=>t.approval==='waiting').length})`:''}</Text></Pressable>)}</ScrollView>
   <FlatList data={visible} keyExtractor={x=>x.id} contentContainerStyle={s.list} ListEmptyComponent={<View style={s.empty}><Ionicons name="checkmark-circle-outline" size={44} color={colors.muted}/><Text style={s.emptyTitle}>Nothing here</Text><Text style={s.muted}>Tasks in this category will appear here.</Text></View>} renderItem={({item})=><Pressable style={s.card} onPress={()=>setSelected(item)}>
    <View style={[s.priority,item.priority==='high'&&s.high,item.priority==='low'&&s.low]}/><View style={s.cardBody}><Text style={s.title}>{item.title}</Text><Text style={s.client}>{item.clientName}</Text><View style={s.row}><Text style={s.meta}>{item.dueDate}</Text><Text style={s.dot}>•</Text><Text style={s.meta}>{item.status.replace('_',' ')}</Text>{item.approval==='waiting'&&<View style={s.wait}><Text style={s.waitText}>Approval</Text></View>}</View></View><Ionicons name="chevron-forward" size={20} color={colors.muted}/>

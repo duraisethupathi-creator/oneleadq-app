@@ -1,1 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';import { defaultDevelopmentProjects } from '../data/defaultDevelopmentProjects';import { DevelopmentProject } from '../types/developmentProject';const KEY='@oneleadq/development-projects/v1';export async function loadDevelopmentProjects():Promise<DevelopmentProject[]>{const raw=await AsyncStorage.getItem(KEY);if(!raw){await AsyncStorage.setItem(KEY,JSON.stringify(defaultDevelopmentProjects));return defaultDevelopmentProjects;}try{return JSON.parse(raw) as DevelopmentProject[]}catch{await AsyncStorage.setItem(KEY,JSON.stringify(defaultDevelopmentProjects));return defaultDevelopmentProjects;}}export async function saveDevelopmentProjects(items:DevelopmentProject[]){await AsyncStorage.setItem(KEY,JSON.stringify(items));}
+import { defaultDevelopmentProjects } from '../data/defaultDevelopmentProjects';
+import { DevelopmentProject } from '../types/developmentProject';
+import { preservedCollection } from './preservedCollection';
+
+const store = preservedCollection<DevelopmentProject>('@oneleadq/development-projects/v1', defaultDevelopmentProjects);
+export const loadDevelopmentProjects = store.load;
+export const saveDevelopmentProjects = store.save;
