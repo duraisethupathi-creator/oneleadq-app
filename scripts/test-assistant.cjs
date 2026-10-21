@@ -82,26 +82,21 @@ async function main() {
   assert.equal(defaults.voice, undefined); assert.equal(defaults.language, undefined);
   assert.equal(lookups, 3);
   let sent;
-  const service = load('src/services/aiAgent.ts', { fetch: async (url, options) => {
-    sent = { url, options };
-    return { ok: true, json: async () => ({ ok: true, reply: 'A live-shaped reply', agentId: 'seo' }) };
-  } });
-  const context = { name: 'Client B', website: 'https://example.com' };
-  assert.equal((await service.askOneLeadQAgent(' SEO check ', context)).agentId, 'seo');
-  assert.equal(sent.url.endsWith('/ai'), true);
-  assert.deepEqual(JSON.parse(sent.options.body), { message: 'SEO check', clientContext: context });
-  const abortable = load('src/services/aiAgent.ts', { fetch: (url, options) => new Promise((resolve, reject) => {
-    const abort = () => { const error = new Error('aborted'); error.name = 'AbortError'; reject(error); };
-    if (options.signal.aborted) abort(); else options.signal.addEventListener('abort', abort, { once: true });
-  }) });
-  const controller = new AbortController();
-  const pending = abortable.askOneLeadQAgent('test', undefined, controller.signal);
-  controller.abort();
-  await assert.rejects(pending, /stopped or timed out/);
-  const malformed = load('src/services/aiAgent.ts', { fetch: async () => ({ ok: true, json: async () => ({ ok: true, reply: 123 }) }) });
-  await assert.rejects(malformed.askOneLeadQAgent('test'), /Unable to connect/);
-  const unhealthy = load('src/services/aiAgent.ts', { fetch: async () => ({ ok: false, json: async () => ({ ok: true, connected: true }) }) });
-  assert.equal((await unhealthy.checkAIAgentHealth()).connected, false);
+  const draft = {id:'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',state:'AWAITING_REVIEW',plan:{summary:'Fixture reply',items:['Review']}};
+  const modules = name => name==='./orchestrator' ? {
+    createDraft:async(...args)=>{sent=args;return draft;},readDraft:async()=>draft,cancelDraft:async()=>draft,
+  }:name==='./trustedWindows'?{trustedWindows:{newDraftId:async()=>draft.id}}:name==='../agents/registry'?{resolveAgencyIntent:()=>({kind:'route',serviceId:'seo',backendId:'seo'})}:require(name);
+  const service = load('src/services/aiAgent.ts', {require:modules});
+  const context = {id:'qa-client',name:'Client B',website:'https://example.test'};
+  assert.equal((await service.askOneLeadQAgent(' SEO check ',context)).agentId,'seo');
+  assert.equal(sent[0],context.id);assert.equal(sent[1],'conversation');
+  assert.equal(JSON.parse(sent[2]).message,'SEO check');
+  assert.equal(JSON.parse(sent[2]).clientContext.id,context.id);
+  await assert.rejects(service.askOneLeadQAgent('test'),/Select a client/);
+  const controller=new AbortController();controller.abort();
+  await assert.rejects(service.askOneLeadQAgent('test',context,controller.signal),/stopped or timed out/);
+  const unhealthy=load('src/services/aiAgent.ts',{require:modules,fetch:async()=>({ok:false,json:async()=>({ok:true,connected:true})})});
+  assert.equal((await unhealthy.checkAIAgentHealth()).connected,false);
   console.log('PASS: voice-session deduplication/cancellation, 22 reaction states and priority, readable replies, device TTS voice ranking/defaults/refresh, AI payload/abort/validation/health');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

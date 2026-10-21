@@ -103,7 +103,7 @@ class OneLeadQTrustModule : Module() {
       val base = URL(endpoint)
       require(base.protocol == "https" && base.userInfo == null && (base.path.isEmpty() || base.path == "/") && base.query == null && base.ref == null) { "Encrypted gateway origin required" }
       require(fingerprint.matches(Regex("[a-f0-9]{64}"))) { "Authenticated laptop certificate fingerprint required" }
-      require(route.matches(Regex("/(trusted/(enroll|challenge|reconnect|status|forget|requests/[a-f0-9-]{36})|windows/jobs(/[a-f0-9-]{36}(/cancel)?)?)"))) { "Native transport route rejected" }
+      require(route.matches(Regex("/(trusted/(enroll|challenge|reconnect|status|audit|forget|requests/[a-f0-9-]{36})|windows/jobs(/[a-f0-9-]{36}(/cancel)?)?|orchestrator/runs(/[a-f0-9-]{36}(/(cancel|approve|execute))?)?)"))) { "Native transport route rejected" }
       require(method == "GET" || method == "POST")
       val trustManager = object : X509TrustManager {
         override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()

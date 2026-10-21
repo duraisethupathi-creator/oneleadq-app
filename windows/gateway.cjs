@@ -12,7 +12,7 @@ const ACTIONS = new Set(['analyze','plan','propose-files','approve-files','rejec
 const id = () => crypto.randomUUID();
 const reject = (status, message) => { const error = new Error(message); error.status = status; throw error; };
 const redact = value => String(value).replace(/(?:AIza[\w-]{20,}|gh[pousr]_[\w]{20,}|github_pat_[\w_]{20,}|sk-[\w-]{16,}|Bearer\s+\S+)/gi,'[REDACTED]').replace(/((?:password|secret|token|api[_-]?key)\s*[:=]\s*)[^\s,;]+/gi,'$1[REDACTED]');
-function createGateway({ mappings, backend = 'http://127.0.0.1:3001', historyDirectory, npmCli = path.join(path.dirname(process.execPath),'node_modules/npm/bin/npm-cli.js'), ttl = 30*60*1000 }) {
+function createGateway({ mappings, backend = 'http://127.0.0.1:3001', historyDirectory, npmCli = path.join(path.dirname(process.execPath),'node_modules/npm/bin/npm-cli.js'), ttl = 30*60*1000, orchestrator }) {
   const base = new URL(backend);
   if (base.protocol !== 'http:' || !['127.0.0.1','localhost'].includes(base.hostname) || base.username || base.password || base.pathname !== '/' || base.search || base.hash) throw new Error('Backend must be loopback HTTP');
   const codes = new Map(), sessions = new Map(), attempts = new Map(), jobs = new Map();
@@ -113,12 +113,26 @@ function createGateway({ mappings, backend = 'http://127.0.0.1:3001', historyDir
         const backendSession=workerOnly?{expiresAt:Date.now()+ttl}:await(async()=>{const pairing=await upstream('/web-development/session/pair',{});return upstream('/web-development/session/exchange',{pairingCode:pairing.pairingCode});})();
         const sessionToken=crypto.randomBytes(32).toString('base64url'),expiresAt=Math.min(Date.now()+ttl,backendSession.expiresAt);
         sessions.set(sessionToken,{mapping:code.mapping,backendToken:backendSession.sessionToken,workerOnly,expiresAt});attempts.delete(key);
-        return send(200,{ok:true,sessionToken,expiresAt,scope:[workerOnly?'windows-worker':'web-development'],clientId:code.mapping.clientId,projectId:code.mapping.projectId});
+        return send(200,{ok:true,sessionToken,expiresAt,scope:[workerOnly?'windows-worker':'web-development',...(code.mapping.orchestratorEnabled===true&&orchestrator?['orchestrator-drafts']:[])],clientId:code.mapping.clientId,projectId:code.mapping.projectId});
       }
       const token=(req.headers.authorization||'').replace(/^Bearer /,'');const session=sessions.get(token);if(!session)reject(401,'Scoped device pairing required');
       const mapping=session.mapping;
-      // Renewed trusted-phone identities cannot obtain website/file/Git/AI authority.
-      if(session.workerOnly&&!/^\/windows\/(workspace|session\/revoke|jobs(?:\/[\da-f-]{36}(?:\/cancel)?)?)$/.test(url.pathname))reject(403,'Worker-only session cannot access website, file, Git or AI actions');
+      // Worker sessions never obtain website/file/Git authority. Drafts additionally require explicit owner opt-in.
+      if(session.workerOnly&&!(mapping.orchestratorEnabled===true&&orchestrator&&url.pathname.startsWith('/orchestrator/'))&&!/^\/windows\/(workspace|session\/revoke|jobs(?:\/[\da-f-]{36}(?:\/cancel)?)?)$/.test(url.pathname))reject(403,'Worker-only session cannot access website, file, Git or AI actions');
+      if(url.pathname.startsWith('/orchestrator/')){
+        if(mapping.orchestratorEnabled!==true||!orchestrator)reject(403,'Draft orchestration needs explicit owner mapping and provider configuration');
+        const route=url.pathname.match(/^\/orchestrator\/runs(?:\/([a-f0-9-]{36})(?:\/(cancel|approve|execute))?)?$/);
+        if(!route)reject(404,'Draft route unavailable');
+        let run;
+        if(!route[1]&&req.method==='GET')return send(200,{ok:true,clientId:mapping.clientId,projectId:mapping.projectId,runs:orchestrator.list(mapping)});
+        if(!route[1]&&req.method==='POST')run=orchestrator.start(mapping,body);
+        else if(route[1]&&!route[2]&&req.method==='GET')run=orchestrator.get(mapping,route[1]);
+        else if(route[2]==='cancel'&&req.method==='POST')run=orchestrator.cancel(mapping,route[1]);
+        else if(route[2]==='approve'&&req.method==='POST'){if(Object.keys(body).some(k=>k!=='previewHash'))reject(400,'Exact preview approval only');run=orchestrator.approve(mapping,route[1],body.previewHash);}
+        else if(route[2]==='execute'&&req.method==='POST')orchestrator.external();
+        else reject(404,'Draft route unavailable');
+        return send(200,{ok:true,clientId:mapping.clientId,projectId:mapping.projectId,run});
+      }
       if(req.method==='POST'&&url.pathname==='/windows/session/revoke'){sessions.delete(token);return send(200,{ok:true});}
       if(req.method==='GET'&&url.pathname==='/windows/workspace')return send(200,{ok:true,clientId:mapping.clientId,projectId:mapping.projectId,workspaceId:mapping.workspaceId,commands:Object.keys(COMMANDS)});
       if(url.pathname==='/windows/jobs') {
@@ -143,11 +157,18 @@ function createGateway({ mappings, backend = 'http://127.0.0.1:3001', historyDir
     }catch(error){send(error.status||503,{ok:false,error:error.status?error.message:'Worker or backend unavailable; inspect locally'});}
   });
   server.on('clientError',(_,socket)=>socket.destroy());
-  server.shutdown=async()=>{await Promise.all([...jobs.values()].filter(j=>j.child).map(stop));sessions.clear();codes.clear();await new Promise(resolve=>server.close(resolve));};
+  server.shutdown=async()=>{if(orchestrator)await orchestrator.shutdown();await Promise.all([...jobs.values()].filter(j=>j.child).map(stop));sessions.clear();codes.clear();await new Promise(resolve=>server.close(resolve));};
   return server;
 }
 module.exports={createGateway,COMMANDS};
 if(require.main===module){
   const configPath=process.argv[2];if(!configPath)throw new Error('Usage: node windows/gateway.cjs <approved-config.json>');
-  const config=JSON.parse(fs.readFileSync(configPath,'utf8').replace(/^\uFEFF/,''));const server=createGateway(config);server.listen(3020,'127.0.0.1',()=>console.log('OneLeadQ scoped gateway: http://127.0.0.1:3020 (native loopback only)'));process.on('SIGINT',()=>void server.shutdown());process.on('SIGTERM',()=>void server.shutdown());
+  const config=JSON.parse(fs.readFileSync(configPath,'utf8').replace(/^\uFEFF/,''));
+  if(config.orchestrator){
+    const {createOrchestrator}=require('../backend/orchestrator.cjs');
+    const {createGeminiPlanner}=require('../backend/gemini.cjs');
+    const {GoogleGenAI}=require('../backend/node_modules/@google/genai');
+    config.orchestrator=createOrchestrator({directory:config.orchestrator.historyDirectory,generate:createGeminiPlanner({apiKey:process.env.GEMINI_API_KEY,GoogleGenAI}),mode:'PRODUCTION_UNVERIFIED'});
+  }
+  const server=createGateway(config);server.listen(3020,'127.0.0.1',()=>console.log('OneLeadQ scoped gateway: http://127.0.0.1:3020 (native loopback only)'));process.on('SIGINT',()=>void server.shutdown());process.on('SIGTERM',()=>void server.shutdown());
 }

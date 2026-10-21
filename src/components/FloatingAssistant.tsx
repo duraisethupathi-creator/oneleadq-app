@@ -1,10 +1,12 @@
 import { resolveAgencyIntent, serviceRegistry, type ServiceId } from '../agents/registry';
-import RoamingAssistant from './RoamingAssistant';
+import RoamingAssistant, { ASSISTANT_DOCK_HEIGHT } from './RoamingAssistant';
+import { assistantPanelLayout } from '../assistant/panelLayout';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { forwardRef, memo, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Animated, AppState, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View, StyleSheet, useWindowDimensions } from 'react-native';
+import { Animated, AppState, BackHandler, Image, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View, StyleSheet, useWindowDimensions } from 'react-native';
 import { webDevelopmentIntent } from '../assistant/webDevelopmentIntent';
 import { requestAgencyDraft as askOneLeadQAgent } from '../services/agencyDraft';
 import { loadClients, loadCurrentClientId } from '../storage/clientStorage';
@@ -68,6 +70,9 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
   const [active, setActive] = useState(AppState.currentState === 'active');
   const [facingLeft, setFacingLeft] = useState(true);
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
+  const panelFrame = assistantPanelLayout(height, insets.top, insets.bottom, keyboardTop, compactDock ? ASSISTANT_DOCK_HEIGHT : 82);
   const travel = Math.max(0, width - (compactDock ? 80 : 124));
   const walkX = useRef(new Animated.Value(0)).current;
   const mounted = useRef(true);
@@ -391,7 +396,6 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
       setOpen(false);
       webModeRef.current = false;
       setWebMode(false);
-      setTextMode(false);
       setOutcome('idle');
       setMoving(true);
       wake();
@@ -400,13 +404,24 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
       ++lifecycle.current;
       setOpen(true);
       setMoving(false);
-      setOutcome('greeting');
-      setNotice('');
-      setMessage(ASSISTANT_GREETING);
+      setOutcome('idle');
       wake();
-      void speak(ASSISTANT_GREETING, lifecycle.current);
     }
   }
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', event => setKeyboardTop(event.endCoordinates.screenY));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardTop(null));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+  useEffect(() => {
+    if (!open) return;
+    const back = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!openRef.current) return false;
+      toggleAssistant(); return true;
+    });
+    return () => back.remove();
+  }, [open]);
 
   useEffect(() => {
     mounted.current = true;
@@ -455,7 +470,7 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
     return () => { stopped = true; animation?.stop(); walkX.stopAnimation(); if (walkTimer.current) clearTimeout(walkTimer.current); };
   }, [compactDock, open, active, sleeping, moving, travel, walkX]);
 
-  useEffect(()=>{if(!open)return;let disposed=false;void(async()=>{try{const id=await loadCurrentClientId();const clients=await loadClients();if(disposed)return;const client=clients.find(c=>c.id===id && c.status==='active');const next=client?.id||null;if(visibleClient.current!==next){conversation.forClient(next);setMessage(ASSISTANT_GREETING);setWebCommand(undefined);setWebHandoff(undefined);setWebWorkspaceOpen(false);}visibleClient.current=next;setSelectedClient(client?{id:client.id,name:client.name}:null);}catch{if(!disposed)setNotice('Unable to load the selected client.');}})();return()=>{disposed=true;};},[open,active]);
+  useEffect(()=>{if(!open)return;let disposed=false;void(async()=>{try{const id=await loadCurrentClientId();const clients=await loadClients();if(disposed)return;const client=clients.find(c=>c.id===id && c.status==='active');const next=client?.id||null;if(visibleClient.current!==next){conversation.forClient(next);setInput('');setMessage(ASSISTANT_GREETING);setWebCommand(undefined);setWebHandoff(undefined);setWebWorkspaceOpen(false);}visibleClient.current=next;setSelectedClient(client?{id:client.id,name:client.name}:null);}catch{if(!disposed)setNotice('Unable to load the selected client.');}})();return()=>{disposed=true;};},[open,active]);
 
   useEffect(() => { if (wakeSignal !== undefined && activeRef.current) wake(); }, [wakeSignal]);
 
@@ -487,9 +502,9 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
   }
   const voiceBusy = busy || starting;
   return <View pointerEvents="box-none" style={s.layer}>
-    {open && <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={12}
-      style={[s.keyboardLayer, { paddingBottom: Math.min(212, height * 0.22) }]} pointerEvents="box-none">
-      <View onTouchStart={() => assistantLog('panel touch')} style={[s.panel, { width: Math.min(340, width - 24), maxHeight: height * 0.68 }]}>
+    {open && <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}
+      style={[s.keyboardLayer, { top: panelFrame.top, bottom: panelFrame.bottom, paddingBottom: 0 }]} pointerEvents="box-none">
+      <View onTouchStart={() => assistantLog('panel touch')} style={[s.panel, { width: Math.min(340, width - 24), maxHeight: panelFrame.maxHeight }]}>
         <View style={s.head}><View><Text style={s.title}>OneLeadQ Assistant</Text>
           <Text style={[s.state, { color: ui.accent }]} accessibilityLiveRegion="polite">{starting ? 'Preparing to listen…' : ui.label}</Text></View>
           <Pressable accessibilityRole="button" accessibilityLabel="Close assistant" onPress={toggleAssistant} style={s.close}><Ionicons name="close" size={20} /></Pressable></View>
@@ -561,7 +576,7 @@ const FloatingAssistant = forwardRef<FloatingAssistantHandle, FloatingAssistantP
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>}
-    {compactDock ? <RoamingAssistant active={!open && active} awake={!sleeping} bottomInset={dockBottomInset} onOpen={toggleAssistant} onWake={wake} paused={motionPaused}>
+    {compactDock ? <RoamingAssistant active={active} awake={!sleeping} chatOpen={open} keyboardVisible={keyboardTop !== null} bottomInset={dockBottomInset} onOpen={toggleAssistant} onWake={wake} paused={motionPaused}>
       {(running, walking, left) => <AssistantMascot reaction={reaction === 'walking' ? (walking ? (running ? 'running' : 'walking') : 'idle') : reaction} active={active && !sleeping} facingLeft={left} />}
     </RoamingAssistant> : <Animated.View pointerEvents="box-none" style={[s.walker, compactDock && { bottom: 8 }, { transform: [{ translateX: open ? 0 : walkX }] }]}>
       <Pressable accessibilityRole="button" accessibilityLabel={open ? 'Close OneLeadQ assistant' : 'Open OneLeadQ assistant'} onPress={toggleAssistant} style={[s.bot, compactDock && { width: 56, height: 56 }]}>

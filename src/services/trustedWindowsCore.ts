@@ -60,7 +60,7 @@ export function createTrustedWorker(native: TrustNative | null, selectedClient: 
     try { data = JSON.parse(response.body) as Record<string, unknown>; } catch { throw new ConnectionError('BAD_RESPONSE', 'Gateway response invalid; refresh without replaying an action.'); }
     if (response.status >= 400 || data.ok !== true) {
       const code = typeof data.code === 'string' ? data.code : 'REQUEST_REJECTED';
-      const messages: Record<string, string> = { TRUST_EXPIRED: 'Authentication Expired. Trust was revoked or expired; re-pair on the laptop.', TRUST_REVOKED: 'Authentication Expired. Laptop revoked this device.', BAD_PROOF: 'Authentication Expired. Device identity rejected; explicit re-pair required.', SCOPE_MISMATCH: 'Wrong client/project. Select the originally paired client or re-pair explicitly.', SESSION_EXPIRED: 'Session expired; reconnect to the trusted laptop.', OUTCOME_UNKNOWN: 'Task submission outcome uncertain. Review history; it was not executed again.', REQUEST_UNKNOWN: 'Task submission not confirmed. Review the laptop history before retrying the same request ID.', UPSTREAM_REJECTED: 'Worker session rejected. Retry connection; no approvals or tasks are replayed.', GATEWAY_OFFLINE: 'Laptop worker is offline. Retry when the gateway is running.', PAIRING_LIMIT: 'Too many pairing attempts; wait one minute.', INVALID_PAIRING: 'Invitation invalid or expired. Generate a fresh invitation on the laptop.' };
+      const messages: Record<string, string> = { SCOPE_REQUIRED: 'Draft access is not enabled for this paired client. Ask the laptop owner to authorize drafts and issue a new pairing invitation.', TRUST_EXPIRED: 'Authentication Expired. Trust was revoked or expired; re-pair on the laptop.', TRUST_REVOKED: 'Authentication Expired. Laptop revoked this device.', BAD_PROOF: 'Authentication Expired. Device identity rejected; explicit re-pair required.', SCOPE_MISMATCH: 'Wrong client/project. Select the originally paired client or re-pair explicitly.', SESSION_EXPIRED: 'Session expired; reconnect to the trusted laptop.', OUTCOME_UNKNOWN: 'Task submission outcome uncertain. Review history; it was not executed again.', REQUEST_UNKNOWN: 'Task submission not confirmed. Review the laptop history before retrying the same request ID.', UPSTREAM_REJECTED: 'Worker session rejected. Retry connection; no approvals or tasks are replayed.', GATEWAY_OFFLINE: 'Laptop worker is offline. Retry when the gateway is running.', PAIRING_LIMIT: 'Too many pairing attempts; wait one minute.', INVALID_PAIRING: 'Invitation invalid or expired. Generate a fresh invitation on the laptop.' };
       throw new ConnectionError(code, messages[code] ?? `Gateway rejected request (HTTP ${response.status}). Check pairing and laptop health.`);
     }
     return data;
@@ -131,6 +131,15 @@ export function createTrustedWorker(native: TrustNative | null, selectedClient: 
   }
   async function ensure(id?: string) { const version = epoch; const d = await device(id); current(version); if (!session || session.deviceId !== d.deviceId || session.expiresAt <= now() + 30000) await reconnect(d.deviceId); current(version); if (!session || session.deviceId !== d.deviceId) throw new ConnectionError('OFFLINE', view.message); return d; }
   return {
+    async newDraftId() { const value = await api().randomId(); if (!uuid(value)) throw new ConnectionError('BAD_REQUEST_ID', 'Secure request ID unavailable.'); return value; },
+    async drafts(route: string, method: 'GET' | 'POST', body?: Record<string, unknown>, clientId?: string) {
+      if (!/^\/orchestrator\/runs(?:\/[a-f0-9-]{36}(?:\/(cancel|approve))?)?$/.test(route)) throw new ConnectionError('ROUTE_REJECTED', 'Unsupported draft operation.');
+      const d = await ensure(), version = epoch;
+      if (clientId !== d.clientId || await selectedClient() !== d.clientId) throw new ConnectionError('SCOPE_MISMATCH', 'Selected client changed.');
+      const result = await call(d, route, method, body, session!.token); current(version);
+      if (await selectedClient() !== d.clientId || result.clientId !== d.clientId || result.projectId !== d.projectId) throw new ConnectionError('SCOPE_MISMATCH', 'Wrong-client draft response rejected.');
+      return result;
+    },
     getState: () => view,
     subscribe(listener: (value: ConnectionView) => void) { listeners.add(listener); listener(view); return () => { listeners.delete(listener); }; },
     async initialize() { try { await load(); if (foreground && devices.some(d => d.autoConnect)) await reconnect(); } catch (error) { publish({ status: 'Offline', message: message(error) }); } },

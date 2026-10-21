@@ -1,3 +1,6 @@
+import { createDraft, readDraft, cancelDraft } from './orchestrator';
+import { trustedWindows } from './trustedWindows';
+import { resolveAgencyIntent } from '../agents/registry';
 // Public connection address only; provider credentials stay on the backend.
 const AI_AGENT_URL = process.env.EXPO_PUBLIC_AI_AGENT_URL?.trim().replace(/\/$/, '') || 'http://192.168.1.2:3001';
 const AI_REQUEST_TIMEOUT = 120000;
@@ -33,24 +36,31 @@ export type ConversationTurn = { role: 'user' | 'assistant'; content: string; cl
 export async function askOneLeadQAgent(message: string, clientContext?: AIClientContext, signal?: AbortSignal, history: ConversationTurn[] = []): Promise<AIAgentResponse> {
   const cleanMessage = message.trim();
   if (!cleanMessage) throw new Error('Message is required');
+  if (signal?.aborted) throw new Error('OneLeadQ AI request stopped or timed out. Please try again.');
+  if (!clientContext?.id) throw new Error('Select a client and pair its trusted laptop before requesting a draft.');
+  const intent = resolveAgencyIntent(cleanMessage);
+  const routed = intent.kind === 'route' || intent.kind === 'unavailable' ? intent.serviceId : null;
+  // SEO conversation remains advice. Fetching a site is never implied; HTML audits use the dedicated screen.
+  const serviceId = !routed || routed === 'seo' ? 'conversation' : routed;
+  const safeHistory = history.filter(turn => turn.clientId === clientContext.id).slice(-8);
+  const command = JSON.stringify({ message: cleanMessage, clientContext, history: safeHistory });
+  let draft = await createDraft(clientContext.id, serviceId, command, await trustedWindows.newDraftId());
+  const deadline = Date.now() + AI_REQUEST_TIMEOUT;
   try {
-    const { response, data } = await fetchWithTimeout(AI_AGENT_URL + '/ai', {
-      method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: cleanMessage, clientContext, ...(history.length ? { history } : {}) }),
-    }, AI_REQUEST_TIMEOUT);
-    if (!data || typeof data !== 'object' || !('ok' in data) || data.ok !== true || !response.ok) {
-      throw new Error('OneLeadQ AI Agent request failed');
+    while (['QUEUED', 'RUNNING'].includes(draft.state)) {
+      if (signal?.aborted || Date.now() >= deadline) throw new Error('OneLeadQ AI request stopped or timed out. Please try again.');
+      await new Promise<void>(resolve => setTimeout(resolve, 400));
+      draft = await readDraft(clientContext.id, draft.id);
     }
-    if (!('reply' in data) || typeof data.reply !== 'string') throw new Error('Invalid AI reply');
-    return data as AIAgentResponse;
+    if (signal?.aborted) throw new Error('OneLeadQ AI request stopped or timed out. Please try again.');
+    if (draft.state !== 'AWAITING_REVIEW' || !draft.plan) throw new Error('Draft failed. Inspect Specialist Drafts history before retrying with a new request.');
+    return { ok: true, provider: 'Gemini', agentId: intent.kind === 'route' ? intent.backendId : routed || 'general', agent: 'Specialist draft', reply: draft.plan.summary + '\n' + draft.plan.items.join('\n') + '\nDraft only; open Specialist Drafts to review files and hashes. Production execution is unverified.' };
   } catch (error) {
-    // Never display raw backend errors or log client context.
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('OneLeadQ AI request stopped or timed out. Please try again.');
-    }
-    throw new Error('Unable to connect to OneLeadQ AI. Check the AI Agent and your network connection.');
+    if (signal?.aborted || Date.now() >= deadline) { try { await cancelDraft(clientContext.id, draft.id); } catch { /* Outcome remains in scoped server history. */ } }
+    throw error;
   }
 }
+
 export async function checkAIAgentHealth() {
   try {
     const { response, data } = await fetchWithTimeout(AI_AGENT_URL + '/health', {}, HEALTH_TIMEOUT);

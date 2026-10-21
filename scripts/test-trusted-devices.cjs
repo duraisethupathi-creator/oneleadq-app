@@ -1,6 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const {createDeviceTrust,enrollmentMessage,challengeMessage}=require('../windows/device-trust.cjs');
+test('scoped durable audit: enrollment, dispatch, completion observation, cancellation and revoke',async()=>{const f=fixture(),a=await f.make(),d=await f.enroll(a);const job=await a.proxy('/windows/jobs','POST',{commandId:'npm-test'},d.sessionToken,crypto.randomUUID());await a.proxy('/windows/jobs/'+job.job.id,'GET',undefined,d.sessionToken);await a.proxy('/windows/jobs/'+job.job.id+'/cancel','POST',{},d.sessionToken);const audit=await a.proxy('/trusted/audit','GET',undefined,d.sessionToken);for(const e of ['ENROLLED','DISPATCH_RESERVED','DISPATCH_CONFIRMED','JOB_STATUS','CANCEL_REQUESTED'])assert.ok(audit.events.some(x=>x.event===e),e);assert.ok(audit.events.every(e=>e.deviceId===d.deviceId&&e.clientId==='client-a'&&e.projectId==='project-a'));assert.ok(!JSON.stringify(f.saved).includes(d.sessionToken));await a.revoke(d.deviceId);assert.ok(f.saved.audit.some(e=>e.event==='REVOKED'));await assert.rejects(a.proxy('/trusted/audit','GET',undefined,d.sessionToken),e=>e.status===401);});
 function fixture(){
  let saved=null,clock=Date.now(),executions=0,lose=false;const codes=new Map(),jobs=new Map();
  const store={read:async()=>structuredClone(saved),write:async value=>{saved=structuredClone(value);}};
@@ -51,3 +52,5 @@ test('expired trust and invalid enrollment proof fail closed',async()=>{
  assert.throws(()=>a.challenge({gatewayId:f.gatewayId,deviceId:s.deviceId,clientId:'client-a',projectId:'project-a'},'expired'),e=>e.code==='TRUST_EXPIRED');
  await assert.rejects(a.enroll({gatewayId:f.gatewayId,clientId:'client-a',projectId:'project-a',pairingCode:'123456',publicKey:f.publicKey,signature:'bad'},'bad'),e=>e.code==='BAD_PROOF');
 });
+
+test('existing worker trust never gains orchestrator authority implicitly',async()=>{const f=fixture(),a=await f.make(),s=await f.enroll(a);await assert.rejects(a.proxy('/orchestrator/runs','GET',undefined,s.sessionToken),e=>e.code==='SCOPE_REQUIRED');assert.equal(f.saved.devices[s.deviceId].orchestratorDrafts,false);});

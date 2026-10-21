@@ -29,6 +29,7 @@ function harness(status, requested = granted, androidVersion = 35, initialClient
     start(options) { calls.start++; calls.options = options; }, stop() { calls.stop++; }, abort() { calls.abort++; events.error?.({ error: 'aborted' }); events.end?.(); },
   };
   const rn = { AppState: app, Platform: { OS: 'android', Version: androidVersion }, useWindowDimensions: () => ({ width: 400, height: 800 }),
+    Keyboard: { addListener: () => ({ remove() {} }) }, BackHandler: { addEventListener: () => ({ remove() {} }) },
     StyleSheet: { create: x => x }, Animated: { Value: class { stopAnimation() {} }, View: 'AnimatedView' } };
   for (const name of ['Modal','Image','KeyboardAvoidingView','Pressable','ScrollView','Text','TextInput','View']) rn[name] = name;
   function load(file) {
@@ -40,6 +41,8 @@ function harness(status, requested = granted, androidVersion = 35, initialClient
       if (name === 'react') return react;
       if (name === 'react/jsx-runtime') return { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) };
       if (name === 'react-native') return rn;
+      if (name === 'react-native-safe-area-context') return { useSafeAreaInsets: () => ({ top: 32, bottom: 12, left: 0, right: 0 }) };
+      if (name.endsWith('/panelLayout')) return load('src/assistant/panelLayout.ts');
       if (name === '@expo/vector-icons') return { Ionicons: 'Ionicons' };
       if (name === 'expo-speech') return { stop: async () => {}, getAvailableVoicesAsync: async () => [], speak() {} };
       if (name === 'expo-speech-recognition') return { ExpoSpeechRecognitionModule: native, useSpeechRecognitionEvent: (name, fn) => events[name] = fn };
