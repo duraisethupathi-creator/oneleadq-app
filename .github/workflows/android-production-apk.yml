@@ -53,7 +53,7 @@ jobs:
           [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
           # Owner-approved candidate; changes to this literal require review on main.
           # Branch ancestry alone is NOT source approval.
-          APPROVED_SHA='0ab9104b1b1586b541b1003cd1d1d2e2409ee931' # Set only after explicit approval of the exact V5 candidate commit
+          APPROVED_SHA='cea85d3670098a38bac6cd7a9aa8d3c0f69c54c0' # Set only after explicit approval of the exact V5 candidate commit
           test -n "$APPROVED_SHA" || { echo 'BLOCKED: no production source SHA approved'; exit 1; }
           test "$EXPECTED_SHA" = "$APPROVED_SHA"
           printf 'source_sha=%s\n' "$APPROVED_SHA" >> "$GITHUB_OUTPUT"
