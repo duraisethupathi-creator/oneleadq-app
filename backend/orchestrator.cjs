@@ -66,7 +66,13 @@ function createOrchestrator({directory,generate,mode='PRODUCTION_UNVERIFIED',tim
   }
   return {
     start(mapping,raw){if(![mapping.clientId,mapping.projectId,mapping.workspaceId].every(sid))fail(403,'Explicit workspace required');const input=validate(raw),fingerprint=hash(JSON.stringify(input));const existing=[...runs.values()].find(r=>r.clientId===mapping.clientId&&r.projectId===mapping.projectId&&r.workspaceId===mapping.workspaceId&&r.requestId===input.requestId);if(existing){if(existing.inputHash!==fingerprint)fail(409,'Request ID conflict');return visible(existing);}if(controllers.size>=2)fail(429,'Draft capacity reached; wait for active work');if(runs.size>=1000)fail(429,'History capacity requires owner review');const r={id:crypto.randomUUID(),requestId:input.requestId,inputHash:fingerprint,serviceId:input.serviceId,clientId:mapping.clientId,projectId:mapping.projectId,workspaceId:mapping.workspaceId,state:'QUEUED',mode,productionVerified:false,createdAt:Date.now(),attempts:0,events:[],externalActionsEnabled:false};save(r);runs.set(r.id,r);void execute(r,input);return visible(r);},
-    list(mapping){return [...runs.values()].filter(r=>r.clientId===mapping.clientId&&r.projectId===mapping.projectId&&r.workspaceId===mapping.workspaceId).map(visible);},
+    list(mapping){
+      // Reserve space below Android's 1 MiB native-response bound, including JSON escaping.
+      const matching=[...runs.values()].filter(r=>r.clientId===mapping.clientId&&r.projectId===mapping.projectId&&r.workspaceId===mapping.workspaceId).sort((a,b)=>b.createdAt-a.createdAt||b.id.localeCompare(a.id));
+      const recent=[];let bytes=2;
+      for(const r of matching){const size=Buffer.byteLength(JSON.stringify(r),'utf8')+1;if(size>700000)fail(503,'History record exceeds mobile limit; inspect locally');if(recent.length>=50||bytes+size>700000)break;recent.push(visible(r));bytes+=size;}
+      return recent.reverse(); // Full history remains on disk and individually addressable by scoped ID.
+    },
     get(mapping,id){return visible(scoped(mapping,id));},
     cancel(mapping,id){const r=scoped(mapping,id);if(['QUEUED','RUNNING'].includes(r.state)){controllers.get(id)?.abort();event(r,'CANCELLED');}return visible(r);},
     approve(mapping,id,previewHash){const r=scoped(mapping,id);if(r.state!=='AWAITING_REVIEW'||r.previewHash!==previewHash)fail(409,'Review exact current preview before approval');safeRoot();for(const a of r.artifacts){const file=path.join(root,id+'-draft',a.name);if(fs.realpathSync(path.dirname(file))!==path.join(root,id+'-draft')||fs.lstatSync(file).isSymbolicLink()||hash(fs.readFileSync(file))!==a.sha256)fail(409,'Draft changed after verification');}event(r,'APPROVED_DRAFT');return visible(r);},

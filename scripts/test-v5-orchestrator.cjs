@@ -6,6 +6,18 @@ const {createGeminiPlanner}=require('../backend/gemini.cjs');
 const scope={clientId:'qa-a',projectId:'qa-project',workspaceId:'qa-workspace'};
 const other={clientId:'qa-b',projectId:'qa-project',workspaceId:'qa-workspace'};
 const input=serviceId=>({requestId:crypto.randomUUID(),serviceId,command:'Create a disposable QA draft',...(serviceId==='seo'?{siteHtml:'<html><title>QA</title><h1>QA</h1></html>'}:{})});
+test('mobile history stays below the native byte bound without deleting archived runs or crossing clients',async t=>{
+ const {engine,dir}=fixture(t);const sample=await terminal(engine,engine.start(scope,input('content')).id);await engine.shutdown();
+ // Worst-case valid plan strings: JSON escapes control characters to six bytes each.
+ for(let i=0;i<100;i++){const id=crypto.randomUUID();const record={...sample,id,requestId:crypto.randomUUID(),createdAt:i+1,plan:{summary:'x'+'\u0000'.repeat(1999),items:Array.from({length:20},()=> 'x'+'\u0000'.repeat(1999))}};fs.writeFileSync(path.join(dir,id+'.json'),JSON.stringify(record));}
+ const restored=createOrchestrator({directory:dir,mode:'FIXTURE_TESTED',generate:async()=>assert.fail('History reading must not invoke Gemini')});
+ const history=restored.list(scope),serialized=JSON.stringify({ok:true,clientId:scope.clientId,projectId:scope.projectId,runs:history});
+ assert.ok(Buffer.byteLength(serialized,'utf8')<1048576);assert.ok(history.length>0&&history.length<100);assert.equal(history.at(-1).id,sample.id);assert.equal(fs.readdirSync(dir).filter(f=>f.endsWith('.json')).length,101);assert.deepEqual(restored.list(other),[]);
+ assert.equal(restored.get(scope,sample.id).id,sample.id);await restored.shutdown();
+});
+test('new draft screen retains valid UTF-8 labels',()=>{
+ const screen=fs.readFileSync(path.join(__dirname,'../app/specialist-drafts.tsx'),'utf8');assert.ok(screen.includes('owner\u2019s'));assert.ok(!screen.includes('\u00e2\u20ac\u2122'));assert.ok(!screen.includes('\u00c2\u00b7'));
+});
 async function terminal(engine,id){for(let i=0;i<150;i++){const run=engine.get(scope,id);if(!['RUNNING','QUEUED'].includes(run.state))return run;await new Promise(r=>setTimeout(r,5));}throw Error('Draft did not finish');}
 function fixture(t,options={}){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'oneleadq-v5-drafts-'));const engine=createOrchestrator({directory:dir,generate:async()=>({summary:'Fixture plan',items:['Review proposed output','Approve draft only']}),mode:'FIXTURE_TESTED',...options});t.after(async()=>{await engine.shutdown();fs.rmSync(dir,{recursive:true,force:true});});return {dir,engine};}
 for(const serviceId of SERVICES)test(serviceId+': real fixture output, scoped durable history and exact approval',async t=>{
