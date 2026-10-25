@@ -33,34 +33,51 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
   }
 }
 export type ConversationTurn = { role: 'user' | 'assistant'; content: string; clientId: string | null };
+const generating = new Set<string>();
 export async function askOneLeadQAgent(message: string, clientContext?: AIClientContext, signal?: AbortSignal, history: ConversationTurn[] = []): Promise<AIAgentResponse> {
   const cleanMessage = message.trim();
   if (!cleanMessage) throw new Error('Message is required');
   if (signal?.aborted) throw new Error('OneLeadQ AI request stopped or timed out. Please try again.');
   if (!clientContext?.id) throw new Error('Select a client and pair its trusted laptop before requesting a draft.');
-  const intent = resolveAgencyIntent(cleanMessage);
-  const routed = intent.kind === 'route' || intent.kind === 'unavailable' ? intent.serviceId : null;
-  // SEO conversation remains advice. Fetching a site is never implied; HTML audits use the dedicated screen.
-  const serviceId = !routed || routed === 'seo' ? 'conversation' : routed;
-  const safeHistory = history.filter(turn => turn.clientId === clientContext.id).slice(-8);
-  const command = JSON.stringify({ message: cleanMessage, clientContext, history: safeHistory });
-  let draft = await createDraft(clientContext.id, serviceId, command, await trustedWindows.newDraftId());
-  const deadline = Date.now() + AI_REQUEST_TIMEOUT;
-  try {
+  const clientId = clientContext.id;
+  if (generating.has(clientId)) throw new Error('A draft request is already running for this client. Cancel it or wait for its result.');
+  generating.add(clientId);
+  let stopped = false, timer: ReturnType<typeof setTimeout> | undefined;
+  let stop = () => {};
+  let creation: ReturnType<typeof createDraft> | undefined;
+  const stopError = () => new Error('OneLeadQ AI request stopped or timed out. Review draft history before retrying.');
+  const interrupted = new Promise<never>((_, reject) => { stop = () => { stopped = true; reject(stopError()); }; timer = setTimeout(stop, AI_REQUEST_TIMEOUT); });
+  signal?.addEventListener('abort', stop, { once: true });
+  const work = (async (): Promise<AIAgentResponse> => {
+    const intent = resolveAgencyIntent(cleanMessage);
+    const routed = intent.kind === 'route' || intent.kind === 'unavailable' ? intent.serviceId : null;
+    // Advice uses scoped conversation, never a site fetch or HTML-audit execution.
+    const serviceId = !routed || routed === 'seo' ? 'conversation' : routed;
+    const safeHistory = history.filter(turn => turn.clientId === clientId).slice(-8);
+    const command = JSON.stringify({ message: cleanMessage, clientContext, history: safeHistory });
+    const requestId = await trustedWindows.newDraftId();
+    if (stopped || signal?.aborted) throw stopError();
+    creation = createDraft(clientId, serviceId, command, requestId);
+    let draft = await creation;
     while (['QUEUED', 'RUNNING'].includes(draft.state)) {
-      if (signal?.aborted || Date.now() >= deadline) throw new Error('OneLeadQ AI request stopped or timed out. Please try again.');
+      if (stopped || signal?.aborted) throw stopError();
       await new Promise<void>(resolve => setTimeout(resolve, 400));
-      draft = await readDraft(clientContext.id, draft.id);
+      if (stopped || signal?.aborted) throw stopError();
+      draft = await readDraft(clientId, draft.id);
     }
-    if (signal?.aborted) throw new Error('OneLeadQ AI request stopped or timed out. Please try again.');
-    if (draft.state !== 'AWAITING_REVIEW' || !draft.plan) throw new Error('Draft failed. Inspect Specialist Drafts history before retrying with a new request.');
-    return { ok: true, provider: 'Gemini', agentId: intent.kind === 'route' ? intent.backendId : routed || 'general', agent: 'Specialist draft', reply: draft.plan.summary + '\n' + draft.plan.items.join('\n') + '\nDraft only; open Specialist Drafts to review files and hashes. Production execution is unverified.' };
-  } catch (error) {
-    if (signal?.aborted || Date.now() >= deadline) { try { await cancelDraft(clientContext.id, draft.id); } catch { /* Outcome remains in scoped server history. */ } }
+    if (stopped || signal?.aborted) throw stopError();
+    if (draft.state !== 'AWAITING_REVIEW' || !draft.plan) throw new Error('Draft failed or was interrupted. Inspect Specialist Drafts history before retrying.');
+    const expected = intent.kind === 'route' ? intent.backendId : routed || 'general';
+    if (draft.agentId !== expected) throw new Error('The selected specialist could not be confirmed by the laptop. Review gateway compatibility and draft history.');
+    const agent = draft.agentId === 'seo' ? 'SEO Agent' : draft.agentId === 'localSeo' ? 'Local SEO Agent' : draft.agentId === 'general' ? 'General AI Agent' : 'Specialist draft';
+    return { ok: true, provider: 'Gemini', agentId: draft.agentId, agent, reply: draft.plan.summary + '\n' + draft.plan.items.join('\n') + '\nDraft only; open Specialist Drafts to review files and hashes. Production execution is unverified.' };
+  })();
+  try { return await Promise.race([work, interrupted]); }
+  catch (error) {
+    if (stopped && creation) void creation.then(draft => cancelDraft(clientId, draft.id)).catch(() => { /* Preserve scoped server history if cancellation cannot be confirmed. */ });
     throw error;
-  }
+  } finally { if (timer) clearTimeout(timer); signal?.removeEventListener('abort', stop); generating.delete(clientId); }
 }
-
 export async function checkAIAgentHealth() {
   try {
     const { response, data } = await fetchWithTimeout(AI_AGENT_URL + '/health', {}, HEALTH_TIMEOUT);

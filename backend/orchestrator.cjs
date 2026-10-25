@@ -13,6 +13,11 @@ function validate(input){
   if(input.serviceId==='seo'&&(!input.siteHtml||!input.siteHtml.trim()))fail(400,'SEO requires provided HTML');
   return {requestId:input.requestId,serviceId:input.serviceId,command:input.command.trim(),...(input.siteHtml===undefined?{}:{siteHtml:input.siteHtml})};
 }
+function conversationScope(input,mapping){
+  if(input.serviceId!=='conversation')return;
+  let value;try{value=JSON.parse(input.command);}catch{fail(400,'Invalid conversation contract');}
+  if(!value||typeof value.message!=='string'||!value.message.trim()||value.clientContext?.id!==mapping.clientId||!Array.isArray(value.history)||value.history.length>8||value.history.some(t=>!t||t.clientId!==mapping.clientId||!['user','assistant'].includes(t.role)||typeof t.content!=='string'))fail(403,'Conversation client/history scope rejected');
+}
 function plan(value){
   if(!value||Object.keys(value).some(k=>!['summary','items'].includes(k))||typeof value.summary!=='string'||!value.summary.trim()||value.summary.length>2000||!Array.isArray(value.items)||!value.items.length||value.items.length>20||value.items.some(x=>typeof x!=='string'||!x.trim()||x.length>2000))fail(502,'Invalid Gemini structured plan');
   return {summary:value.summary,items:value.items};
@@ -60,12 +65,13 @@ function createOrchestrator({directory,generate,mode='PRODUCTION_UNVERIFIED',tim
       const files=outputs(r.serviceId,p,input);safeRoot();const out=path.join(root,r.id+'-draft');fs.mkdirSync(out,{recursive:false,mode:0o700});
       // Fixed adapter filenames only; provider text is data, never a path, executable or command.
       const artifacts=[];for(const [name,content]of Object.entries(files)){fs.writeFileSync(path.join(out,name),content,{flag:'wx',mode:0o600});artifacts.push({name,sha256:hash(content),bytes:Buffer.byteLength(content)});}
+      r.agentId=r.serviceId==='conversation'?require('./agentRouting.cjs').conversationAgent(input.command):r.serviceId;
       r.plan=p;r.artifacts=artifacts;r.previewHash=hash(JSON.stringify({plan:p,artifacts}));r.verification={passed:true,checks:['structured-plan','fixed-paths','draft-only','artifact-sha256']};event(r,'AWAITING_REVIEW');
     }catch{event(r,controller.signal.aborted?'CANCELLED':'FAILED');r.error=controller.signal.aborted?'CANCELLED':'PROVIDER_OR_DRAFT_FAILED';save(r);}
     finally{controllers.delete(r.id);}
   }
   return {
-    start(mapping,raw){if(![mapping.clientId,mapping.projectId,mapping.workspaceId].every(sid))fail(403,'Explicit workspace required');const input=validate(raw),fingerprint=hash(JSON.stringify(input));const existing=[...runs.values()].find(r=>r.clientId===mapping.clientId&&r.projectId===mapping.projectId&&r.workspaceId===mapping.workspaceId&&r.requestId===input.requestId);if(existing){if(existing.inputHash!==fingerprint)fail(409,'Request ID conflict');return visible(existing);}if(controllers.size>=2)fail(429,'Draft capacity reached; wait for active work');if(runs.size>=1000)fail(429,'History capacity requires owner review');const r={id:crypto.randomUUID(),requestId:input.requestId,inputHash:fingerprint,serviceId:input.serviceId,clientId:mapping.clientId,projectId:mapping.projectId,workspaceId:mapping.workspaceId,state:'QUEUED',mode,productionVerified:false,createdAt:Date.now(),attempts:0,events:[],externalActionsEnabled:false};save(r);runs.set(r.id,r);void execute(r,input);return visible(r);},
+    start(mapping,raw){if(![mapping.clientId,mapping.projectId,mapping.workspaceId].every(sid))fail(403,'Explicit workspace required');const input=validate(raw);conversationScope(input,mapping);const fingerprint=hash(JSON.stringify(input));const existing=[...runs.values()].find(r=>r.clientId===mapping.clientId&&r.projectId===mapping.projectId&&r.workspaceId===mapping.workspaceId&&r.requestId===input.requestId);if(existing){if(existing.inputHash!==fingerprint)fail(409,'Request ID conflict');return visible(existing);}if(controllers.size>=2)fail(429,'Draft capacity reached; wait for active work');if(runs.size>=1000)fail(429,'History capacity requires owner review');const r={id:crypto.randomUUID(),requestId:input.requestId,inputHash:fingerprint,serviceId:input.serviceId,clientId:mapping.clientId,projectId:mapping.projectId,workspaceId:mapping.workspaceId,state:'QUEUED',mode,productionVerified:false,createdAt:Date.now(),attempts:0,events:[],externalActionsEnabled:false};save(r);runs.set(r.id,r);void execute(r,input);return visible(r);},
     list(mapping){
       // Reserve space below Android's 1 MiB native-response bound, including JSON escaping.
       const matching=[...runs.values()].filter(r=>r.clientId===mapping.clientId&&r.projectId===mapping.projectId&&r.workspaceId===mapping.workspaceId).sort((a,b)=>b.createdAt-a.createdAt||b.id.localeCompare(a.id));

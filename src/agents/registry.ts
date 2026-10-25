@@ -1,4 +1,4 @@
-﻿export type ServiceId = 'webDevelopment' | 'mobileDevelopment' | 'seo' | 'metaAds' | 'googleAds' | 'content' | 'automation' | 'youtube';
+export type ServiceId = 'webDevelopment' | 'mobileDevelopment' | 'seo' | 'metaAds' | 'googleAds' | 'content' | 'automation' | 'youtube';
 export type ServiceStatus = 'IMPLEMENTED' | 'PARTIAL' | 'PLANNED';
 export const serviceRegistry: ReadonlyArray<{id:ServiceId;name:string;status:ServiceStatus;capabilities:readonly string[];exampleCommand:string}> = [
   {id:'webDevelopment',exampleCommand:'Create a website',name:'Website Development',status:'PARTIAL',capabilities:['authenticated website drafts','design previews','separate approval gates']},
@@ -13,7 +13,7 @@ export const serviceRegistry: ReadonlyArray<{id:ServiceId;name:string;status:Ser
 export type AgencyIntent = {kind:'general'} | {kind:'route';serviceId:ServiceId;backendId:string} | {kind:'clarify';choices:ServiceId[];question:string} | {kind:'unavailable';serviceId:ServiceId;message:string};
 export function resolveAgencyIntent(message: string): AgencyIntent {
   const text=message.trim();
-  const action=/\b(create|build|generate|write|improve|audit|review|check|manage|launch|setup|set up|automate|plan|strategy|pannu|pannunga|choose)\b|உருவாக்கு|செய்|சரிபார்|மேம்படுத்து/i.test(text);
+  const action=/\b(create|build|generate|write|give|improve|audit|review|check|manage|launch|setup|set up|automate|plan|strategy|pannu|pannunga|choose)\b|உருவாக்கு|செய்|சரிபார்|மேம்படுத்து/i.test(text);
   if (!action || /^(what is|explain|meaning|hi\b|hello\b)|na enna/i.test(text)) return {kind:'general'};
   // Classify the requested object, not descriptive business facts following "for".
   const subject=text.split(/\bfor\b/i)[0];

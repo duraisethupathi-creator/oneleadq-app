@@ -3,6 +3,7 @@ export type TrustedDevice = {
   gatewayId: string; deviceId: string; clientId: string; projectId: string; endpoint: string; fingerprint: string;
   name: string; lastConnectedAt: number; trustExpiresAt: number; autoConnect: boolean;
   pending?: { id: string; commandId: string };
+  pendingDraftId?: string;
 };
 export type ConnectionView = { status: 'Connecting' | 'Connected' | 'Offline' | 'Authentication Expired'; message: string; devices: TrustedDevice[]; jobs: WorkerJob[]; gatewayHealth?: string; backendHealth?: string };
 export interface TrustNative {
@@ -41,6 +42,7 @@ export function createTrustedWorker(native: TrustNative | null, selectedClient: 
         if (data.version !== 1 || !Array.isArray(data.devices) || data.devices.length > 20) throw new ConnectionError('STORAGE_INVALID', 'Encrypted device records need review; no authority was reset.');
         for (const d of data.devices) if (!d || !uuid(d.gatewayId) || !uuid(d.deviceId) || !scopeId(d.clientId) || !scopeId(d.projectId) || !/^[a-f0-9]{64}$/.test(d.fingerprint) || !Number.isFinite(d.trustExpiresAt) || !Number.isFinite(d.lastConnectedAt) || typeof d.autoConnect !== 'boolean' || (d.pending && (!uuid(d.pending.id) || !['npm-typecheck', 'npm-test', 'npm-lint', 'npm-build'].includes(d.pending.commandId)))) throw new ConnectionError('STORAGE_INVALID', 'Invalid trusted-device identity; explicit re-pair required.');
         devices = data.devices.map(d => ({ ...d, endpoint: origin(d.endpoint) }));
+        if (devices.some(d => d.pendingDraftId !== undefined && !uuid(d.pendingDraftId))) throw new ConnectionError('STORAGE_INVALID', 'Invalid pending draft identity; no authority was reset.');
       }
       publish({});
     })();
@@ -55,13 +57,16 @@ export function createTrustedWorker(native: TrustNative | null, selectedClient: 
   async function call(d: Pick<TrustedDevice, 'endpoint' | 'fingerprint'>, route: string, method = 'GET', body?: Record<string, unknown>, token?: string, requestId?: string) {
     let response: { status: number; body: string };
     try { response = await api().request(origin(d.endpoint), d.fingerprint, route, method, body ? JSON.stringify(body) : null, token ?? null, requestId ?? null); }
-    catch (e) { if (String(e).includes('TLS_PIN_MISMATCH')) throw new ConnectionError('LAPTOP_IDENTITY_CHANGED', 'Authentication Expired. Laptop certificate identity changed; verify and re-pair explicitly.'); throw new ConnectionError('NETWORK_UNAVAILABLE', 'Encrypted laptop connection unavailable. Check Wi-Fi/gateway and Retry; no task replayed.'); }
+    catch (e) { if (String(e).includes('TLS_PIN_MISMATCH')) throw new ConnectionError('LAPTOP_IDENTITY_CHANGED', 'Authentication Expired. Laptop certificate identity changed; verify and re-pair explicitly.'); if (/timeout|timed out/i.test(String(e))) throw new ConnectionError('REQUEST_TIMEOUT', 'Laptop request timed out. Review draft history before retrying; no request was replayed.'); throw new ConnectionError('NETWORK_UNAVAILABLE', 'Encrypted laptop connection unavailable. Check Wi-Fi/gateway and Retry; no task replayed.'); }
     let data: Record<string, unknown>;
-    try { data = JSON.parse(response.body) as Record<string, unknown>; } catch { throw new ConnectionError('BAD_RESPONSE', 'Gateway response invalid; refresh without replaying an action.'); }
+    try { data = JSON.parse(response.body) as Record<string, unknown>; } catch { data = {}; }
+    if (!data || typeof data !== 'object' || Array.isArray(data)) data = {};
+    const httpMessages: Record<number, string> = {401:'Session expired. Reconnect to the trusted laptop; no request was replayed.',403:'This paired client is not authorized for the requested operation. Ask the laptop owner to review its scope.',404:route.startsWith('/orchestrator/')?'The trusted laptop is missing the draft route. Upgrade its gateway and transport together; do not switch to direct AI.':'Gateway endpoint unavailable (HTTP 404). Check the compatible laptop service.',409:'Draft request conflict. Review the existing request and history before trying again.',429:'Laptop request limit reached. Wait before retrying.',500:'Laptop service failed. Its health may still be online; review history before retrying.',503:'Laptop AI service is temporarily unavailable. Review history before retrying.'};
+    if (response.status < 400 && data.ok === undefined) throw new ConnectionError('BAD_RESPONSE', 'Gateway response invalid; refresh without replaying an action.');
     if (response.status >= 400 || data.ok !== true) {
       const code = typeof data.code === 'string' ? data.code : 'REQUEST_REJECTED';
       const messages: Record<string, string> = { SCOPE_REQUIRED: 'Draft access is not enabled for this paired client. Ask the laptop owner to authorize drafts and issue a new pairing invitation.', TRUST_EXPIRED: 'Authentication Expired. Trust was revoked or expired; re-pair on the laptop.', TRUST_REVOKED: 'Authentication Expired. Laptop revoked this device.', BAD_PROOF: 'Authentication Expired. Device identity rejected; explicit re-pair required.', SCOPE_MISMATCH: 'Wrong client/project. Select the originally paired client or re-pair explicitly.', SESSION_EXPIRED: 'Session expired; reconnect to the trusted laptop.', OUTCOME_UNKNOWN: 'Task submission outcome uncertain. Review history; it was not executed again.', REQUEST_UNKNOWN: 'Task submission not confirmed. Review the laptop history before retrying the same request ID.', UPSTREAM_REJECTED: 'Worker session rejected. Retry connection; no approvals or tasks are replayed.', GATEWAY_OFFLINE: 'Laptop worker is offline. Retry when the gateway is running.', PAIRING_LIMIT: 'Too many pairing attempts; wait one minute.', INVALID_PAIRING: 'Invitation invalid or expired. Generate a fresh invitation on the laptop.' };
-      throw new ConnectionError(code, messages[code] ?? `Gateway rejected request (HTTP ${response.status}). Check pairing and laptop health.`);
+      throw new ConnectionError(code, messages[code] ?? httpMessages[response.status] ?? 'Gateway request failed. Review laptop health and history; no request was replayed.');
     }
     return data;
   }
@@ -131,13 +136,26 @@ export function createTrustedWorker(native: TrustNative | null, selectedClient: 
   }
   async function ensure(id?: string) { const version = epoch; const d = await device(id); current(version); if (!session || session.deviceId !== d.deviceId || session.expiresAt <= now() + 30000) await reconnect(d.deviceId); current(version); if (!session || session.deviceId !== d.deviceId) throw new ConnectionError('OFFLINE', view.message); return d; }
   return {
-    async newDraftId() { const value = await api().randomId(); if (!uuid(value)) throw new ConnectionError('BAD_REQUEST_ID', 'Secure request ID unavailable.'); return value; },
+    async newDraftId() { const d = await device(); if (d.pendingDraftId) return d.pendingDraftId; const value = await api().randomId(); if (!uuid(value)) throw new ConnectionError('BAD_REQUEST_ID', 'Secure request ID unavailable.'); return value; },
     async drafts(route: string, method: 'GET' | 'POST', body?: Record<string, unknown>, clientId?: string) {
       if (!/^\/orchestrator\/runs(?:\/[a-f0-9-]{36}(?:\/(cancel|approve))?)?$/.test(route)) throw new ConnectionError('ROUTE_REJECTED', 'Unsupported draft operation.');
       const d = await ensure(), version = epoch;
       if (clientId !== d.clientId || await selectedClient() !== d.clientId) throw new ConnectionError('SCOPE_MISMATCH', 'Selected client changed.');
+      const status = await call(d, '/trusted/status', 'GET', undefined, session!.token); current(version);
+      if ((status.health as { draftProtocol?: number } | undefined)?.draftProtocol !== 1) throw new ConnectionError('WORKER_UPGRADE_REQUIRED', 'The paired laptop runs an incompatible draft gateway. Upgrade its gateway and trusted transport together. Direct AI fallback is disabled.');
+      if (status.draftAccess !== true) throw new ConnectionError('SCOPE_REQUIRED', 'Draft access is not enabled for this paired client. Ask the laptop owner to authorize drafts and issue a new pairing invitation.');
+      const creating = route === '/orchestrator/runs' && method === 'POST';
+      if (creating) {
+        if (!uuid(body?.requestId)) throw new ConnectionError('BAD_REQUEST_ID', 'Stable draft request identity required.');
+        if (d.pendingDraftId && d.pendingDraftId !== body.requestId) throw new ConnectionError('OUTCOME_UNKNOWN', 'Previous draft submission is uncertain. Refresh history or retry the same request ID.');
+        d.pendingDraftId = body.requestId; await save(); current(version);
+      }
       const result = await call(d, route, method, body, session!.token); current(version);
       if (await selectedClient() !== d.clientId || result.clientId !== d.clientId || result.projectId !== d.projectId) throw new ConnectionError('SCOPE_MISMATCH', 'Wrong-client draft response rejected.');
+      const returned = result.run as {id?: string;clientId?: string;projectId?: string;requestId?: string} | undefined;
+      if (returned && (returned.clientId !== d.clientId || returned.projectId !== d.projectId)) throw new ConnectionError('SCOPE_MISMATCH', 'Wrong-client/project draft rejected.');
+      if (creating && (!returned || !uuid(returned.id) || returned.requestId !== body?.requestId)) throw new ConnectionError('OUTCOME_UNKNOWN', 'Draft submission response invalid. Review history or retry the same request identity.');
+      if (creating || (Array.isArray(result.runs) && result.runs.some(r => r && r.requestId === d.pendingDraftId && r.clientId === d.clientId && r.projectId === d.projectId))) { delete d.pendingDraftId; await save(); current(version); }
       return result;
     },
     getState: () => view,

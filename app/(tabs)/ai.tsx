@@ -1,5 +1,5 @@
 import { localDateKey } from "../../src/utils/localDate";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -146,6 +146,9 @@ function getSmartTaskDetails(
   };
 }
 export default function AI() {
+  const generating = useRef(false);
+  const request = useRef<AbortController | null>(null);
+  useEffect(() => () => request.current?.abort(), []);
     const [currentClient, setCurrentClient] = useState<Client | null>(null);
     useFocusEffect(
   useCallback(() => {
@@ -226,15 +229,18 @@ export default function AI() {
   const askAI = async () => {
     const cleanMessage = message.trim();
 
-    if (!cleanMessage || loading) {
+    if (!cleanMessage || loading || generating.current) {
       return;
     }
 
+    generating.current = true;
+    request.current = new AbortController();
     setLoading(true);
 
     setClarificationChoices([]);
     setWebHandoff(undefined);
     setWebOpen(false);
+    setResponseActionable(false);
     setReply("");
     setAgent("");
     setModel("");
@@ -256,7 +262,8 @@ export default function AI() {
         email: currentClient.email,
         notes: currentClient.notes,
       }
-    : undefined
+    : undefined,
+  request.current.signal
 );
       const latestClientId = await loadCurrentClientId();
       if ((latestClientId || null) !== (currentClient?.id || null)) { setReply('Selected client changed. Please review and send your request again.'); setAgent(''); setResponseActionable(false); return; }
@@ -280,7 +287,8 @@ export default function AI() {
         result.reply || "No response received."
       );
     } catch (error) {
-      setConnected(false);
+      const health = await checkAIAgentHealth();
+      setConnected(health.connected === true);
 
       setReply(
         error instanceof Error
@@ -288,6 +296,8 @@ export default function AI() {
           : "Unable to connect to OneLeadQ AI."
       );
     } finally {
+      generating.current = false;
+      request.current = null;
       setLoading(false);
     }
   };
@@ -534,6 +544,7 @@ approval: smartDetails.approval,
                 : "GENERATE / உருவாக்கு"}
             </Text>
           </Pressable>
+          {loading && generating.current && <Pressable accessibilityRole="button" accessibilityLabel="Cancel AI request" onPress={() => request.current?.abort()}><Text style={s.label}>Cancel AI request</Text></Pressable>}
         </View>
 
         {/* LOADING */}

@@ -82,7 +82,7 @@ async function main() {
   assert.equal(defaults.voice, undefined); assert.equal(defaults.language, undefined);
   assert.equal(lookups, 3);
   let sent;
-  const draft = {id:'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',state:'AWAITING_REVIEW',plan:{summary:'Fixture reply',items:['Review']}};
+  const draft = {id:'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',state:'AWAITING_REVIEW',agentId:'seo',plan:{summary:'Fixture reply',items:['Review']}};
   const modules = name => name==='./orchestrator' ? {
     createDraft:async(...args)=>{sent=args;return draft;},readDraft:async()=>draft,cancelDraft:async()=>draft,
   }:name==='./trustedWindows'?{trustedWindows:{newDraftId:async()=>draft.id}}:name==='../agents/registry'?{resolveAgencyIntent:()=>({kind:'route',serviceId:'seo',backendId:'seo'})}:require(name);

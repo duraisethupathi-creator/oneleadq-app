@@ -52,7 +52,7 @@ async function createDeviceTrust({gatewayId,store,legacy='http://127.0.0.1:3020'
   async function invitation(body){if(!validId(body.clientId)||!validId(body.projectId))fail(400,'INVALID_SCOPE','Select an approved client/project');return upstream('/web-development/session/pair',{clientId:body.clientId,projectId:body.projectId});}
   async function proxy(route,method,body,token,requestId){
     const {session,device:d}=authorize(token);
-    if(route==='/trusted/status')return {ok:true,gatewayId,clientId:d.clientId,projectId:d.projectId,deviceId:d.id,lastConnectedAt:d.lastConnectedAt,expiresAt:session.expiresAt,health:await upstream('/health?dependencies=1')};
+    if(route==='/trusted/status')return {ok:true,gatewayId,clientId:d.clientId,projectId:d.projectId,deviceId:d.id,lastConnectedAt:d.lastConnectedAt,expiresAt:session.expiresAt,draftAccess:d.orchestratorDrafts===true,health:await upstream('/health?dependencies=1')};
     if(route==='/trusted/audit'&&method==='GET')return {ok:true,events:(records.audit||[]).filter(e=>e.deviceId===d.id&&e.clientId===d.clientId&&e.projectId===d.projectId)};
     if(route==='/trusted/forget'&&method==='POST')return revoke(d.id);
     const requestMatch=route.match(/^\/trusted\/requests\/([\da-f-]{36})$/);

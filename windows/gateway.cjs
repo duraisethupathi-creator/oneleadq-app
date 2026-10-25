@@ -91,7 +91,7 @@ function createGateway({ mappings, backend = 'http://127.0.0.1:3001', historyDir
       if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress) || req.headers.origin)reject(403,'Native loopback transport required');
       const url=new URL(req.url,'http://127.0.0.1');
       if(req.method==='GET'&&url.pathname==='/health'){
-        const health={ok:true,service:'OneLeadQ scoped Windows gateway'};
+        const health={ok:true,service:'OneLeadQ scoped Windows gateway',draftProtocol:orchestrator?1:0};
         if(url.searchParams.get('dependencies')==='1') {
           try {const response=await fetch(base.origin+'/health',{redirect:'error',signal:AbortSignal.timeout(2000)});const data=await response.json();health.backend=response.ok&&data.ok===true?'ONLINE':'UNAVAILABLE';}
           catch {health.backend='UNAVAILABLE';}
